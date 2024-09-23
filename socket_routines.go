@@ -1,0 +1,189 @@
+package bngsocket
+
+import (
+	"bufio"
+	"encoding/binary"
+	"fmt"
+)
+
+// Ließt Chunks ein und verarbeitet sie weiter
+func constantReading(o *BngSocket) {
+	// Wenn die Funktion am ende ist wird Signalisiert dass sie zuennde ist
+	defer o.bp.Done()
+
+	// Der Buffer Reader ließt die Daten und speichert sie dann im Cache
+	reader := bufio.NewReader(o.conn)
+	cacheBytes := make([]byte, 0)
+	cachedData := make([]byte, 0)
+
+	// Diese Schleife wird Permanent ausgeführt und liest alle Daten ein
+	for runningBackgroundServingLoop(o) {
+		// Verfügbare Daten aus der Verbindung lesen
+		rBytes := make([]byte, 4096)
+		sizeN, err := reader.Read(rBytes)
+		if err != nil {
+			// Der Fehler wird ausgewertet
+			readProcessErrorHandling(o, err)
+			return
+		}
+
+		// Die Daten werden im Cache zwischengespeichert
+		cacheBytes = append(cacheBytes, rBytes[:sizeN]...)
+
+		// Verarbeitung des Empfangspuffers
+		for {
+			// Es wird geprüft ob Mindestens 1 Byte im Cache ist
+			if len(cacheBytes) < 1 {
+				break // Nicht genug Daten, um den Nachrichtentyp zu bestimmen
+			}
+
+			// Der Datentyp wird ermittelt
+			if cacheBytes[0] == byte('C') {
+				// Prüfen, ob genügend Daten für die Chunk-Länge vorhanden sind
+				if len(cacheBytes) < 3 { // 1 Byte für 'C' und 2 Bytes für die Länge
+					break // Warten auf mehr Daten
+				}
+
+				// Chunk-Länge lesen (Bytes 1 bis 2)
+				length := binary.BigEndian.Uint16(cacheBytes[1:3])
+
+				// Optional: Maximale erlaubte Chunk-Größe überprüfen
+				const MaxChunkSize = 4096 // Maximal erlaubte Chunk-Größe in Bytes
+				if length > MaxChunkSize {
+					// Der Fehler wird ausgewertet
+					readProcessErrorHandling(o, fmt.Errorf("chunk too large: %d bytes", length))
+					break
+				}
+
+				// Prüfen, ob genügend Daten für den gesamten Chunk vorhanden sind
+				totalLength := 1 + 2 + int(length) // 'C' + Länge (2 Bytes) + Chunk-Daten
+				if len(cacheBytes) < totalLength {
+					break // Warten auf mehr Daten
+				}
+
+				// Chunk-Daten extrahieren
+				chunkData := cacheBytes[3:totalLength]
+
+				// Chunk-Daten dem gecachten Daten hinzufügen
+				cachedData = append(cachedData, chunkData...)
+
+				// Verarbeitete Bytes aus dem Cache entfernen
+				cacheBytes = cacheBytes[totalLength:]
+			} else if cacheBytes[0] == byte('L') {
+				// 'L' aus dem Cache entfernen
+				cacheBytes = cacheBytes[1:]
+
+				// Gesammelte Daten verarbeiten
+				transportBytes := make([]byte, len(cachedData))
+				copy(transportBytes, cachedData)
+				cachedData = make([]byte, 0)
+				o.bp.Add(1)
+				go func(data []byte) {
+					defer o.bp.Done()
+					o.handleReadedData(data)
+				}(transportBytes)
+			} else {
+				// Der Fehler wird ausgewertet
+				readProcessErrorHandling(o, fmt.Errorf("unknown message type: %v", cacheBytes[0]))
+				return
+			}
+		}
+	}
+}
+
+// Schreibt kontinuirlich Chunks sobald verfügbar
+func constantWriting(o *BngSocket) {
+	// Wird am ende der Lesefunktion aufgerufen
+	defer o.bp.Done()
+
+	// Der Writer wird erstellt
+	writer := bufio.NewWriter(o.conn)
+
+	// Die Schleife empfängt die Daten
+	for runningBackgroundServingLoop(o) {
+		// Es wird auf neue Daten aus dem Chan gewartet
+		data, ok := <-o.writeableData
+		if !ok {
+			// Es wird geprüft ob die Verbindung getrennt wurde
+			if connectionIsClosed(o) {
+				break
+			}
+
+			// Es handelt sich um einen Schwerwiegenden Fehler, die Verbindung wird getrennt
+			o.consensusProtocolTermination(fmt.Errorf("internal chan error"))
+
+			// Schleife, abbruch
+			break
+		}
+
+		// Daten in Chunks aufteilen
+		chunks := splitDataIntoChunks(data, 4096)
+
+		// Die Chunks werden übertragen
+		for _, chunk := range chunks {
+			// Es wird geprüft ob die Verbindung getrennt wurde
+			if connectionIsClosed(o) {
+				// Der Fehler wird verarbeitet
+				o.consensusConnectionClosedSignal()
+				break
+			}
+
+			// Nachrichtentyp 'C' senden
+			err := writer.WriteByte('C')
+			if err != nil {
+				// Der Fehler wird verarbeitet
+				writeProcessErrorHandling(o, err)
+				break
+			}
+
+			// Chunk-Länge senden (2 Bytes)
+			length := uint16(len(chunk))
+			lengthBytes := make([]byte, 2)
+			binary.BigEndian.PutUint16(lengthBytes, length)
+			_, err = writer.Write(lengthBytes)
+			if err != nil {
+				// Der Fehler wird verarbeitet
+				writeProcessErrorHandling(o, err)
+				break
+			}
+
+			// Chunk-Daten senden
+			_, err = writer.Write(chunk)
+			if err != nil {
+				// Der Fehler wird verarbeitet
+				writeProcessErrorHandling(o, err)
+				break
+			}
+
+			// Flush, um sicherzustellen, dass die Daten gesendet werden
+			err = writer.Flush()
+			if err != nil {
+				// Der Fehler wird verarbeitet
+				writeProcessErrorHandling(o, err)
+				break
+			}
+		}
+
+		// Es wird geprüft ob die Verbindung getrennt wurde
+		if connectionIsClosed(o) {
+			// Der Fehler wird verarbeitet
+			o.consensusConnectionClosedSignal()
+			break
+		}
+
+		// Nachrichtentyp 'L' senden, um das Ende der Nachricht zu signalisieren
+		err := writer.WriteByte('L')
+		if err != nil {
+			// Der Fehler wird verarbeitet
+			writeProcessErrorHandling(o, err)
+			break
+		}
+
+		err = writer.Flush()
+		if err != nil {
+			// Der Fehler wird verarbeitet
+			writeProcessErrorHandling(o, err)
+			break
+		}
+	}
+}
