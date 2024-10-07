@@ -12,4 +12,5 @@ require github.com/x448/float16 v0.8.4 // indirect
 require (
 	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
+	golang.org/x/net v0.30.0
 )

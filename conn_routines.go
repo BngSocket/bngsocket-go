@@ -7,7 +7,7 @@ import (
 )
 
 // Ließt Chunks ein und verarbeitet sie weiter
-func constantReading(o *BngSocket) {
+func constantReading(o *BngConn) {
 	// Wenn die Funktion am ende ist wird Signalisiert dass sie zuennde ist
 	defer o.bp.Done()
 
@@ -78,6 +78,8 @@ func constantReading(o *BngSocket) {
 				copy(transportBytes, cachedData)
 				cachedData = make([]byte, 0)
 				o.bp.Add(1)
+
+				// Die Daten werden durch die GoRoutine verarbeitet
 				go func(data []byte) {
 					defer o.bp.Done()
 					o.handleReadedData(data)
@@ -92,7 +94,7 @@ func constantReading(o *BngSocket) {
 }
 
 // Schreibt kontinuirlich Chunks sobald verfügbar
-func constantWriting(o *BngSocket) {
+func constantWriting(o *BngConn) {
 	// Wird am ende der Lesefunktion aufgerufen
 	defer o.bp.Done()
 
@@ -102,7 +104,7 @@ func constantWriting(o *BngSocket) {
 	// Die Schleife empfängt die Daten
 	for runningBackgroundServingLoop(o) {
 		// Es wird auf neue Daten aus dem Chan gewartet
-		data, ok := <-o.writeableData
+		data, ok := o.writingChan.Read()
 		if !ok {
 			// Es wird geprüft ob die Verbindung getrennt wurde
 			if connectionIsClosed(o) {
@@ -117,9 +119,10 @@ func constantWriting(o *BngSocket) {
 		}
 
 		// Daten in Chunks aufteilen
-		chunks := splitDataIntoChunks(data, 4096)
+		chunks := splitDataIntoChunks(data.data, 4096)
 
 		// Die Chunks werden übertragen
+		writedBytes := uint64(0)
 		for _, chunk := range chunks {
 			// Es wird geprüft ob die Verbindung getrennt wurde
 			if connectionIsClosed(o) {
@@ -135,6 +138,7 @@ func constantWriting(o *BngSocket) {
 				writeProcessErrorHandling(o, err)
 				break
 			}
+			writedBytes = writedBytes + 1
 
 			// Chunk-Länge senden (2 Bytes)
 			length := uint16(len(chunk))
@@ -146,6 +150,7 @@ func constantWriting(o *BngSocket) {
 				writeProcessErrorHandling(o, err)
 				break
 			}
+			writedBytes = writedBytes + uint64(len(chunk))
 
 			// Chunk-Daten senden
 			_, err = writer.Write(chunk)
@@ -178,12 +183,17 @@ func constantWriting(o *BngSocket) {
 			writeProcessErrorHandling(o, err)
 			break
 		}
+		writedBytes = writedBytes + 1
 
+		// Die Übertragung wird fertigestellt
 		err = writer.Flush()
 		if err != nil {
 			// Der Fehler wird verarbeitet
 			writeProcessErrorHandling(o, err)
 			break
 		}
+
+		// Es wird Signalisiert dass die Übertragung erfolgreich war
+		data.waitOfResolve <- &writingState{n: int(int(writedBytes) - 1 - len(chunks)), err: nil}
 	}
 }

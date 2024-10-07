@@ -249,7 +249,7 @@ func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 }
 
 // Konvertiert die Parameter eines Funktionsaufrufes
-func processRpcGoDataTypeTransportable(socket *BngSocket, params ...interface{}) ([]*RpcDataCapsle, error) {
+func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) ([]*RpcDataCapsle, error) {
 	newItems := make([]*RpcDataCapsle, 0)
 	for i, item := range params {
 		// Refelction wird auf 'fn' angewendet
@@ -285,7 +285,7 @@ func processRpcGoDataTypeTransportable(socket *BngSocket, params ...interface{})
 			// Es wird versucht die Funktion als Hidden Funktion zu Registrieren
 			id := uuid.New().String()
 			if err := socket.registerFunctionRoot(true, id, item); err != nil {
-				return nil, fmt.Errorf("BngSocket->RegisterFunction: " + err.Error())
+				return nil, fmt.Errorf("bngsocket->RegisterFunction: " + err.Error())
 			}
 
 			// Es wird ein neuer HiddenSharedFunction eintrag erzeugt
@@ -309,7 +309,7 @@ func processRpcGoDataTypeTransportable(socket *BngSocket, params ...interface{})
 }
 
 // Wandelt Transportierte Werte in Go Werte um
-func processValueToGoValue(value any, expectedType reflect.Type, socket *BngSocket) (reflect.Value, error) {
+func processValueToGoValue(value any, expectedType reflect.Type, socket *BngConn) (reflect.Value, error) {
 	val := reflect.ValueOf(value)
 	switch expectedType.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -420,7 +420,7 @@ func processValueToGoValue(value any, expectedType reflect.Type, socket *BngSock
 }
 
 // Konvertiert übertragene Parameter wirder zurück in Go Werte um
-func convertRPCCallParameterBackToGoValues(socket *BngSocket, fn reflect.Value, ctx *BngRequest, params ...*RpcDataCapsle) ([]reflect.Value, error) {
+func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ctx *BngRequest, params ...*RpcDataCapsle) ([]reflect.Value, error) {
 	// Parametertypen prüfen und aufbereiten
 	in := make([]reflect.Value, len(params)+1)
 	in[0] = reflect.ValueOf(ctx)
@@ -537,7 +537,7 @@ func splitDataIntoChunks(data []byte, chunkSize int) [][]byte {
 }
 
 // Wid als Proxy Funktion verwendet
-func proxyHiddenRpcFunction(s *BngSocket, expectedType reflect.Type, hiddenFuncId string) reflect.Value {
+func proxyHiddenRpcFunction(s *BngConn, expectedType reflect.Type, hiddenFuncId string) reflect.Value {
 	return reflect.MakeFunc(expectedType, func(args []reflect.Value) (results []reflect.Value) {
 		// Anzahl der erwarteten Rückgabewerte ermitteln
 		numOut := expectedType.NumOut()
@@ -580,7 +580,7 @@ func proxyHiddenRpcFunction(s *BngSocket, expectedType reflect.Type, hiddenFuncI
 }
 
 // Wird verwenet um beim Lessevorgang auf Fehler zu Reagieren
-func readProcessErrorHandling(socket *BngSocket, err error) {
+func readProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
 		// Die Verbindung wurde getrennt (EOF)
@@ -588,21 +588,21 @@ func readProcessErrorHandling(socket *BngSocket, err error) {
 		return
 	} else if errors.Is(err, syscall.ECONNRESET) {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("BngSocket->constantReading: " + err.Error()))
+		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
 		return
 	} else if errors.Is(err, syscall.EPIPE) {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("BngSocket->constantReading: " + err.Error()))
+		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
 		return
 	} else {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("BngSocket->constantReading: " + err.Error()))
+		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
 		return
 	}
 }
 
 // Wird verwenet um beim Lessevorgang auf Fehler zu Reagieren
-func writeProcessErrorHandling(socket *BngSocket, err error) {
+func writeProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
 		// Die Verbindung wurde getrennt (EOF)
@@ -610,32 +610,32 @@ func writeProcessErrorHandling(socket *BngSocket, err error) {
 		return
 	} else if errors.Is(err, syscall.ECONNRESET) {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("BngSocket->constantWriting: " + err.Error()))
+		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
 		return
 	} else if errors.Is(err, syscall.EPIPE) {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("BngSocket->constantWriting: " + err.Error()))
+		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
 		return
 	} else {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("BngSocket->constantWriting: " + err.Error()))
+		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
 		return
 	}
 }
 
 // Gibt an ob die Hintergrund Dauerschleifen eines Sockets aktiv sein sollen
-func runningBackgroundServingLoop(ipcc *BngSocket) bool {
+func runningBackgroundServingLoop(ipcc *BngConn) bool {
 	return !connectionIsClosed(ipcc)
 }
 
 // Gibt an ob eine Verbinding geschlossen wurde
-func connectionIsClosed(ipcc *BngSocket) bool {
+func connectionIsClosed(ipcc *BngConn) bool {
 	// Der Mutex wird angewendet
 	ipcc.mu.Lock()
 	defer ipcc.mu.Unlock()
 
 	// Der Wert wird ermittelt
-	value := bool(ipcc.closed || ipcc.closing || ipcc.runningError != nil)
+	value := bool(ipcc.closed.Get() || ipcc.closing.Get() || ipcc.runningError != nil)
 
 	// Der Wert wird zurückgegeben
 	return value
