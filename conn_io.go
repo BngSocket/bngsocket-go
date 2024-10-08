@@ -159,3 +159,25 @@ func channelWriteACK(conn *BngConn, pid uint64, sessionId string) error {
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.
 	return nil
 }
+
+func socketWriteRpcRequest(conn *BngConn, value *RpcDataCapsle, id string) error {
+	rt := &RpcResponse{
+		Type:   "rpcres",
+		Id:     id,
+		Return: value,
+	}
+
+	// Den RpcRequest in Bytes serialisieren.
+	bdata, err := msgpack.Marshal(rt)
+	if err != nil {
+		return fmt.Errorf("channelWriteACK[0]: %s", err.Error())
+	}
+
+	// Die Bytes in den Schreibkanal des Sockets schreiben.
+	if err := writeBytesIntoChan(conn, bdata); err != nil {
+		return fmt.Errorf("channelWriteACK[1]: %s", err.Error())
+	}
+
+	// Es ist kein Fehler aufgetreten, Rückgabe nil.
+	return nil
+}

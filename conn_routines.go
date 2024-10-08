@@ -82,7 +82,7 @@ func constantReading(o *BngConn) {
 				// Die Daten werden durch die GoRoutine verarbeitet
 				go func(data []byte) {
 					defer o.bp.Done()
-					o.handleReadedData(data)
+					o.processReadedData(data)
 				}(transportBytes)
 			} else {
 				// Der Fehler wird ausgewertet

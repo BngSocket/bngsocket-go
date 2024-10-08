@@ -273,14 +273,18 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 		case reflect.Map:
 			newItems = append(newItems, &RpcDataCapsle{Type: "map", Value: item})
 		case reflect.Ptr:
-			if fnType.Elem().Kind() != reflect.Struct {
-				return nil, fmt.Errorf("convertRPCCallParameters: invalid data type on %d, type %s, x", i, fnType.Elem().Name())
+			if fnValue.IsNil() {
+				newItems = append(newItems, &RpcDataCapsle{Type: fmt.Sprintf("null-struct:%s", fnType.Elem()), Value: nil})
+			} else {
+				if fnType.Elem().Kind() != reflect.Struct {
+					return nil, fmt.Errorf("convertRPCCallParameters: invalid data type on %d, type %s, x", i, fnType.Elem().Name())
+				}
+				cborconverted, err := cbor.Marshal(fnValue.Interface())
+				if err != nil {
+					return nil, fmt.Errorf("convertRPCCallParameters: invalid data type on %d, type %s, b", i, fnType.Elem().Name())
+				}
+				newItems = append(newItems, &RpcDataCapsle{Type: fmt.Sprintf("struct:%s", fnType.Elem()), Value: cborconverted})
 			}
-			cborconverted, err := cbor.Marshal(fnValue.Interface())
-			if err != nil {
-				return nil, fmt.Errorf("convertRPCCallParameters: invalid data type on %d, type %s, b", i, fnType.Elem().Name())
-			}
-			newItems = append(newItems, &RpcDataCapsle{Type: fmt.Sprintf("struct:%s", fnType.Elem()), Value: cborconverted})
 		case reflect.Func:
 			// Es wird versucht die Funktion als Hidden Funktion zu Registrieren
 			id := uuid.New().String()
