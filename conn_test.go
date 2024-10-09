@@ -10,6 +10,31 @@ import (
 
 const SOCKET_PATH = "/tmp/testunixsocket"
 
+func client_channel_test(_ *testing.T, upgrConn *BngConn) error {
+	// Es wird versucht auf einen Channel zu Joinen
+	channel, err := upgrConn.JoinChannel("test-channel")
+	if err != nil {
+		return err
+	}
+	fmt.Println("Client:", channel.GetSessionId())
+
+	// Es werden Daten in diesem Channel übertragen
+	b := []byte("hallo welt")
+	n, err := channel.Write(b)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Write complete:", n, "of", len(b))
+
+	// Der Channel wird geschlossen
+	if closeErr := channel.Close(); closeErr != nil {
+		return closeErr
+	}
+
+	// Es ist kein Fehler aufgetreten
+	return nil
+}
+
 // Testet die Serverseite
 func Server(t *testing.T, wg *sync.WaitGroup, swg *sync.WaitGroup) {
 	if err := os.Remove(SOCKET_PATH); err != nil {
@@ -35,7 +60,7 @@ func Server(t *testing.T, wg *sync.WaitGroup, swg *sync.WaitGroup) {
 	}
 
 	// Die Verbindung wird geupgradet
-	upgrConn, err := UpgradeSocketToBngSocket(conn)
+	upgrConn, err := UpgradeSocketToBngConn(conn)
 	if err != nil {
 		fmt.Println("Fehler beim Upgraden: " + err.Error())
 		wg.Done()
@@ -89,29 +114,17 @@ func Client(t *testing.T, wg *sync.WaitGroup) {
 	}
 	defer conn.Close()
 
-	// Die Verbindung wird geupgradet
-	upgrConn, err := UpgradeSocketToBngSocket(conn)
+	// Die Verbindung wird geupgradet und die Channel Tests werden durchgeführt
+	upgrConn, err := UpgradeSocketToBngConn(conn)
 	if err != nil {
 		fmt.Println("Fehler beim Upgraden: " + err.Error())
 		wg.Done()
 		return
 	}
-
-	// Es wird ein neuer Channl Request gestartet
-	channel, err := upgrConn.JoinChannel("test-channel")
-	if err != nil {
-		fmt.Println("Fehler beim Join auf den Test Channel: " + err.Error())
+	if err := client_channel_test(t, upgrConn); err != nil {
+		fmt.Println(err)
 		wg.Done()
-		return
 	}
-	fmt.Println("Client:", channel.GetSessionId())
-
-	b := []byte("hallo welt")
-	n, err := channel.Write(b)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Write complete:", n, "of", len(b))
 }
 
 // TestAdd prüft die Additionsfunktion.

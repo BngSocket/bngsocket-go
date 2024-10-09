@@ -10,13 +10,13 @@ import (
 )
 
 // Nimmt eintreffende Daten entgegen
-func (o *BngConn) processReadedData(data []byte) {
+func (o *BngConn) _ProcessReadedData(data []byte) {
 	// Dynamisches Unmarshallen in eine map[string]interface{} oder interface{}
 	var typeInfo TypeInfo
 	err := msgpack.Unmarshal(data, &typeInfo)
 	if err != nil {
 		// Aus Sicherheitsgründen wird die Verbindung terminiert
-		o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[0]: " + err.Error()))
+		o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[0]: " + err.Error()))
 
 		// Wird beendet
 		return
@@ -33,7 +33,7 @@ func (o *BngConn) processReadedData(data []byte) {
 			err := msgpack.Unmarshal(data, &rpcRequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[1]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[1]: " + err.Error()))
 
 				// Wird beendet
 				return
@@ -42,7 +42,7 @@ func (o *BngConn) processReadedData(data []byte) {
 			// Das Paket wird weiterverarbeitet
 			if err := o.processRpcRequest(rpcRequest); err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[2]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[2]: " + err.Error()))
 
 				// Wird beendet
 				return
@@ -53,7 +53,7 @@ func (o *BngConn) processReadedData(data []byte) {
 			err := msgpack.Unmarshal(data, &rpcResponse)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[3]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[3]: " + err.Error()))
 
 				// Wird beendet
 				return
@@ -62,7 +62,7 @@ func (o *BngConn) processReadedData(data []byte) {
 			// Das Paket wird weiterverarbeitet
 			if err := o.processRpcResponse(rpcResponse); err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[4]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[4]: " + err.Error()))
 
 				// Wird beendet
 				return
@@ -77,16 +77,16 @@ func (o *BngConn) processReadedData(data []byte) {
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[3]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[3]: " + err.Error()))
 
 				// Wird beendet
 				return
 			}
 
 			// Das Paket wird weiterverarbeitet
-			if err := o.processIncommingChannelRequestPackage(channlrequest); err != nil {
+			if err := o._ProcessIncommingChannelRequestPackage(channlrequest); err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[4]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[4]: " + err.Error()))
 
 				// Wird beendet
 				return
@@ -97,16 +97,16 @@ func (o *BngConn) processReadedData(data []byte) {
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[5]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[5]: " + err.Error()))
 
 				// Wird beendet
 				return
 			}
 
 			// Das Paket wird weiterverarbeitet
-			if err := o.processIncommingChannelRequestResponsePackage(channlrequest); err != nil {
+			if err := o._ProcessIncommingChannelRequestResponsePackage(channlrequest); err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[6]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[6]: " + err.Error()))
 
 				// Wird beendet
 				return
@@ -117,36 +117,36 @@ func (o *BngConn) processReadedData(data []byte) {
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[7]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[7]: " + err.Error()))
 
 				// Wird beendet
 				return
 			}
 
 			// Das Paket wird weiterverarbeitet
-			if err := o.processIncommingChannelSessionPackage(channlrequest); err != nil {
+			if err := o._ProcessIncommingChannelSessionPackage(channlrequest); err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[8]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[8]: " + err.Error()))
 
 				// Wird beendet
 				return
 			}
 		case "chsig":
 			// Der Datensatz wird als RPC Regquest eingelesen
-			var channlrequest *ChannlTransportSignal
+			var channlrequest *ChannlSessionTransportSignal
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[9]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[9]: " + err.Error()))
 
 				// Wird beendet
 				return
 			}
 
 			// Das Paket wird weiterverarbeitet
-			if err := o.processIncommingChannelClosePackage(channlrequest); err != nil {
+			if err := o._ProcessIncommingChannelSessionSignal(channlrequest); err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[10]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[10]: " + err.Error()))
 
 				// Wird beendet
 				return
@@ -157,16 +157,16 @@ func (o *BngConn) processReadedData(data []byte) {
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[11]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[11]: " + err.Error()))
 
 				// Wird beendet
 				return
 			}
 
 			// Das Paket wird weiterverarbeitet
-			if err := o.processIncommingChannelTransportStateResponsePackage(channlrequest); err != nil {
+			if err := o._ProcessIncommingChannelTransportStateResponsePackage(channlrequest); err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
-				o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[12]: " + err.Error()))
+				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[12]: " + err.Error()))
 
 				// Wird beendet
 				return
@@ -175,7 +175,7 @@ func (o *BngConn) processReadedData(data []byte) {
 	// Unbekannter Pakettyp
 	default:
 		// Aus Sicherheitsgründen wird die Verbindung terminiert
-		o.consensusProtocolTermination(fmt.Errorf("bngsocket->processReadedData[13]: unkown type"))
+		o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[13]: unkown type"))
 
 		// Wird beendet
 		return
@@ -183,20 +183,20 @@ func (o *BngConn) processReadedData(data []byte) {
 }
 
 // Wird verwendet um eintreffende Channel Pakete zu verarbeiten
-func (s *BngConn) processIncommingChannelRequestPackage(channlrequest *ChannelRequest) error {
+func (s *BngConn) _ProcessIncommingChannelRequestPackage(channlrequest *ChannelRequest) error {
 	// Es wird geprüft ob es einen Offenen Listener für die Angefordnerte ID gibt
 	channelListener, foundListener := s.openChannelListener.Load(channlrequest.RequestedChannelId)
 	if !foundListener {
 		// Es wird mitgeteilt dass es sich um einen Unbekannten Channel handelt
 		if err := responseUnkownChannel(s, channlrequest.RequestId); err != nil {
-			return fmt.Errorf("bngsocket->processIncommingChannelRequestPackage[0]: transmittion error")
+			return fmt.Errorf("bngsocket->_ProcessIncommingChannelRequestPackage[0]: transmittion error")
 		}
 		return nil
 	}
 
 	// Das Paket wird an den Channel Listener übergeben
 	if err := channelListener.processIncommingSessionRequest(channlrequest.RequestId, channlrequest.RequestedChannelId); err != nil {
-		return fmt.Errorf("bngsocket->processIncommingChannelRequestPackage[1]: " + err.Error())
+		return fmt.Errorf("bngsocket->_ProcessIncommingChannelRequestPackage[1]: " + err.Error())
 	}
 
 	// Es ist kein Fehler aufgetreten
@@ -204,7 +204,7 @@ func (s *BngConn) processIncommingChannelRequestPackage(channlrequest *ChannelRe
 }
 
 // Wird verwendet um eintreffende Channel Pakete zu verarbeiten
-func (s *BngConn) processIncommingChannelRequestResponsePackage(channlrequest *ChannelRequestResponse) error {
+func (s *BngConn) _ProcessIncommingChannelRequestResponsePackage(channlrequest *ChannelRequestResponse) error {
 	// Der Mutex wird verwendet
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -212,7 +212,7 @@ func (s *BngConn) processIncommingChannelRequestResponsePackage(channlrequest *C
 	// Es wird geprüft ob es einen Offnen Join Vorgang gibt
 	joinProcess, foundJoinProcess := s.openChannelJoinProcesses.Load(channlrequest.ReqId)
 	if !foundJoinProcess {
-		return fmt.Errorf("bngsocket->processIncommingChannelRequestResponsePackage: join process not found")
+		return fmt.Errorf("bngsocket->_ProcessIncommingChannelRequestResponsePackage: join process not found")
 	}
 
 	// Das Response Paket wird an die Join Funktion zurückgegeben
@@ -223,7 +223,7 @@ func (s *BngConn) processIncommingChannelRequestResponsePackage(channlrequest *C
 }
 
 // Wird verwendet um eintreffende Channel Pakete zu verarbeiten
-func (s *BngConn) processIncommingChannelSessionPackage(channlrequest *ChannelSessionDataTransport) error {
+func (s *BngConn) _ProcessIncommingChannelSessionPackage(channlrequest *ChannelSessionDataTransport) error {
 	// Der Mutex wird verwendet
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -235,7 +235,7 @@ func (s *BngConn) processIncommingChannelSessionPackage(channlrequest *ChannelSe
 	if !foundSession {
 		// Der Gegenseite wird mitgeteilt dass kein Offener Channl gefunden wurde
 		if err := responseChannelNotOpen(s, ChannelSessionDataTransport.sesisonId); err != nil {
-			return fmt.Errorf("bngsocket->processIncommingChannelSessionPackage: " + err.Error())
+			return fmt.Errorf("bngsocket->_ProcessIncommingChannelSessionPackage: " + err.Error())
 		}
 
 		// Der Vorgang wird ohne Fehler beendet
@@ -244,7 +244,7 @@ func (s *BngConn) processIncommingChannelSessionPackage(channlrequest *ChannelSe
 
 	// Die eingetroffenen Daten werden an den Channel übergeben
 	if err := ChannelSessionDataTransport.enterIncommingData(channlrequest.Body, channlrequest.PackageId); err != nil {
-		return fmt.Errorf("bngsocket->processIncommingChannelSessionPackage: " + err.Error())
+		return fmt.Errorf("bngsocket->_ProcessIncommingChannelSessionPackage: " + err.Error())
 	}
 
 	// Es ist kein Fehler während des Vorgangs aufgetreten
@@ -252,7 +252,7 @@ func (s *BngConn) processIncommingChannelSessionPackage(channlrequest *ChannelSe
 }
 
 // Wird verwendet um eintreffende ACK Pakete entgegen zu nehmen
-func (s *BngConn) processIncommingChannelTransportStateResponsePackage(channlrequest *ChannelTransportStateResponse) error {
+func (s *BngConn) _ProcessIncommingChannelTransportStateResponsePackage(channlrequest *ChannelTransportStateResponse) error {
 	// Der Mutex wird verwendet
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -264,7 +264,7 @@ func (s *BngConn) processIncommingChannelTransportStateResponsePackage(channlreq
 	if !foundSession {
 		// Der Gegenseite wird mitgeteilt dass kein Offener Channl gefunden wurde
 		if err := responseChannelNotOpen(s, ChannelSessionDataTransport.sesisonId); err != nil {
-			return fmt.Errorf("bngsocket->processIncommingChannelTransportStateResponsePackage: " + err.Error())
+			return fmt.Errorf("bngsocket->_ProcessIncommingChannelTransportStateResponsePackage: " + err.Error())
 		}
 
 		// Der Vorgang wird ohne Fehler beendet
@@ -273,15 +273,15 @@ func (s *BngConn) processIncommingChannelTransportStateResponsePackage(channlreq
 
 	// Der Status wird an den Channel übergeben
 	if err := ChannelSessionDataTransport.enterChannelTransportStateResponseSate(channlrequest.PackageId, channlrequest.State); err != nil {
-		return fmt.Errorf("bngsocket->processIncommingChannelTransportStateResponsePackage: " + err.Error())
+		return fmt.Errorf("bngsocket->_ProcessIncommingChannelTransportStateResponsePackage: " + err.Error())
 	}
 
 	// Es ist kein Fehler aufgetreten
 	return nil
 }
 
-// Wird verwendet um eintreffende ACK Pakete entgegen zu nehmen
-func (s *BngConn) processIncommingChannelClosePackage(channlrequest *ChannlTransportSignal) error {
+// Wird verwendet um eintreffende Signal Pakete entgegen zu nehmen
+func (s *BngConn) _ProcessIncommingChannelSessionSignal(channlrequest *ChannlSessionTransportSignal) error {
 	// Der Mutex wird verwendet
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -289,11 +289,11 @@ func (s *BngConn) processIncommingChannelClosePackage(channlrequest *ChannlTrans
 	// Es wird geprüft ob es einen offnen Channel gibt,
 	// wenn ja wird das Paket an diesen Weitergereicht,
 	// wenn es keinen passenden Channel gibt, wird dies der Gegenseite mitgeteilt.
-	ChannelSessionDataTransport, foundSession := s.openChannelInstances.Load(channlrequest.ChannelSessionId)
+	channelSessionDataTransport, foundSession := s.openChannelInstances.Load(channlrequest.ChannelSessionId)
 	if !foundSession {
 		// Der Gegenseite wird mitgeteilt dass kein Offener Channl gefunden wurde
-		if err := responseChannelNotOpen(s, ChannelSessionDataTransport.sesisonId); err != nil {
-			return fmt.Errorf("bngsocket->processIncommingChannelClosePackage: " + err.Error())
+		if err := responseChannelNotOpen(s, channlrequest.ChannelSessionId); err != nil {
+			return fmt.Errorf("bngsocket->_ProcessIncommingChannelSessionSignal: " + err.Error())
 		}
 
 		// Der Vorgang wird ohne Fehler beendet
@@ -301,8 +301,8 @@ func (s *BngConn) processIncommingChannelClosePackage(channlrequest *ChannlTrans
 	}
 
 	// Der Status wird an den Channel übergeben
-	if err := ChannelSessionDataTransport.enterSignal(channlrequest.Signal); err != nil {
-		return fmt.Errorf("bngsocket->processIncommingChannelClosePackage: " + err.Error())
+	if err := channelSessionDataTransport.enterSignal(channlrequest.Signal); err != nil {
+		return fmt.Errorf("bngsocket->_ProcessIncommingChannelSessionSignal: " + err.Error())
 	}
 
 	// Es ist kein fehler aufgetreten
@@ -310,7 +310,7 @@ func (s *BngConn) processIncommingChannelClosePackage(channlrequest *ChannlTrans
 }
 
 // Wird verwendet wenn ein Abweichender Protokoll Fehler auftritt
-func (o *BngConn) consensusProtocolTermination(reason error) {
+func (o *BngConn) _ConsensusProtocolTermination(reason error) {
 	// Der Mutex wird angewenet
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -335,7 +335,7 @@ func (o *BngConn) consensusProtocolTermination(reason error) {
 }
 
 // Wird verwendet um mitzuteilen dass die Verbindung getrennt wurde
-func (o *BngConn) consensusConnectionClosedSignal() {
+func (o *BngConn) _ConsensusConnectionClosedSignal() {
 	// Der Mutex wird angewenet
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -353,14 +353,14 @@ func (o *BngConn) consensusConnectionClosedSignal() {
 }
 
 // Registriert eine Funktion im allgemeien
-func (s *BngConn) registerFunctionRoot(hidden bool, nameorid string, fn interface{}) error {
+func (s *BngConn) _RegisterFunctionRoot(hidden bool, nameorid string, fn interface{}) error {
 	// Refelction wird auf 'fn' angewendet
 	fnValue := reflect.ValueOf(fn)
 	fnType := fnValue.Type()
 
 	// Die RPC Funktion wird validiert
 	if err := validateRPCFunction(fnValue, fnType, true); err != nil {
-		return fmt.Errorf("bngsocket->registerFunctionRoot[0]: " + err.Error())
+		return fmt.Errorf("bngsocket->_RegisterFunctionRoot[0]: " + err.Error())
 	}
 
 	// Der Mutex wird angewendet
@@ -372,7 +372,7 @@ func (s *BngConn) registerFunctionRoot(hidden bool, nameorid string, fn interfac
 	if hidden {
 		// Es wird geprüft ob es bereits eine Funktion mit dem Namen gibt
 		if _, found := s.hiddenFunctions.Load(nameorid); found {
-			return fmt.Errorf("bngsocket->registerFunctionRoot[1]: function always registrated")
+			return fmt.Errorf("bngsocket->_RegisterFunctionRoot[1]: function always registrated")
 		}
 
 		// Die Funktion wird geschieben
@@ -380,7 +380,7 @@ func (s *BngConn) registerFunctionRoot(hidden bool, nameorid string, fn interfac
 	} else {
 		// Es wird geprüft ob es bereits eine Funktion mit dem Namen gibt
 		if _, found := s.functions.Load(nameorid); found {
-			return fmt.Errorf("bngsocket->registerFunctionRoot[2]: function always registrated")
+			return fmt.Errorf("bngsocket->_RegisterFunctionRoot[2]: function always registrated")
 		}
 
 		// Die Funktion wird geschieben
@@ -392,11 +392,11 @@ func (s *BngConn) registerFunctionRoot(hidden bool, nameorid string, fn interfac
 }
 
 // Ruft eine Funktion auf der Gegenseite auf
-func (s *BngConn) callFunctionRoot(hiddencall bool, nameorid string, params []interface{}, returnDataType reflect.Type) (interface{}, error) {
+func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
 	// Die Parameter werden umgewandelt
 	convertedParams, err := processRpcGoDataTypeTransportable(s, params...)
 	if err != nil {
-		return nil, fmt.Errorf("bngsocket->callFunctionRoot[0]: " + err.Error())
+		return nil, fmt.Errorf("bngsocket->_CallFunction[0]: " + err.Error())
 	}
 
 	// Es wird ein RpcRequest Paket erstellt
@@ -411,29 +411,25 @@ func (s *BngConn) callFunctionRoot(hiddencall bool, nameorid string, params []in
 	// Das Paket wird in Bytes umgewandelt
 	bytedData, err := msgpack.Marshal(rpcreq)
 	if err != nil {
-		return nil, fmt.Errorf("bngsocket->callFunctionRoot[1]: " + err.Error())
+		return nil, fmt.Errorf("bngsocket->_CallFunction[1]: " + err.Error())
 	}
 
 	// Der Antwort Chan wird erzeugt
 	responseChan := make(chan *RpcResponse)
 
 	// Der Response Chan wird zwischengespeichert
-	s.mu.Lock()
 	s.openRpcRequests.Store(rpcreq.Id, responseChan)
-	s.mu.Unlock()
 
 	// Das Paket wird gesendet
 	if err := writeBytesIntoChan(s, bytedData); err != nil {
-		return nil, fmt.Errorf("bngsocket->callFunctionRoot: " + err.Error())
+		return nil, fmt.Errorf("bngsocket->_CallFunction: " + err.Error())
 	}
 
 	// Es wird auf die Antwort gewartet
 	response := <-responseChan
 
 	// Die Requestssitzung wird entfernt
-	s.mu.Lock()
 	s.openRpcRequests.Delete(rpcreq.Id)
-	s.mu.Unlock()
 
 	// Der Chan wird vollständig geschlossen
 	close(responseChan)
@@ -448,17 +444,26 @@ func (s *BngConn) callFunctionRoot(hiddencall bool, nameorid string, params []in
 	if response.Return != nil {
 		// Es wird geprüft ob die Funktion auf der Aufrufendenseite eine Rückgabe erwartet
 		if returnDataType == nil {
-			return nil, fmt.Errorf("bngsocket->callFunctionRoot[2]: wanted return, none, has return")
+			return nil, fmt.Errorf("bngsocket->_CallFunction[2]: wanted return, none, has return")
 		}
 
-		// Die Rückgabewerte werden eingelesen
-		value, err := processRPCCallResponseDataToGoDatatype(response.Return, returnDataType)
-		if err != nil {
-			return nil, fmt.Errorf("bngsocket->callFunctionRoot[3]: " + err.Error())
+		// Es müssen Soviele Rückgaben vorhanden sein, wie gefordert wurde
+		if len(response.Return) != len(returnDataType) {
+			return nil, fmt.Errorf("bngsocket->_CallFunction[2]: invalid function return signature")
+		}
+
+		// Es werden alle Einträge abgearbeitet
+		returnValues := make([]interface{}, 0)
+		for i := range response.Return {
+			value, err := processRPCCallResponseDataToGoDatatype(response.Return[i], returnDataType[i])
+			if err != nil {
+				return nil, fmt.Errorf("bngsocket->_CallFunction[3]: " + err.Error())
+			}
+			returnValues = append(returnValues, value)
 		}
 
 		// Die Empfangenen Daten werden zurückgegeben
-		return value, nil
+		return returnValues, nil
 	}
 
 	// Es ist kein Fehler Aufgetreten, aber es sind auch keine Daten vorhanden
@@ -466,14 +471,10 @@ func (s *BngConn) callFunctionRoot(hiddencall bool, nameorid string, params []in
 }
 
 // Öffnet eine neue Channel Sitzung
-func (s *BngConn) registerNewChannelSession(channelSessionId string) (*BngConnChannel, error) {
-	// Der Mutex wird angewendet
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+func (s *BngConn) _RegisterNewChannelSession(channelSessionId string) (*BngConnChannel, error) {
 	// Es wird geprüft ob der Channel bereits vorhanden ist
 	if _, foundChannel := s.openChannelInstances.Load(channelSessionId); foundChannel {
-		return nil, fmt.Errorf("bngsocket->registerNewChannelSession: %s always in map", channelSessionId)
+		return nil, fmt.Errorf("bngsocket->_RegisterNewChannelSession: %s always in map", channelSessionId)
 	}
 
 	// Der Channel wird erzeugt
@@ -493,4 +494,13 @@ func (s *BngConn) registerNewChannelSession(channelSessionId string) (*BngConnCh
 
 	// Das Objekt wird zurückgegeben
 	return bngsoc, nil
+}
+
+// Schließet eine Channel Sitzung
+func (s *BngConn) _UnregisterChannelSession(channelSessionId string) error {
+	// Die SessionId wird gelöscht
+	s.openChannelInstances.Delete(channelSessionId)
+
+	// Es ist kein Fehler aufgetreten
+	return nil
 }

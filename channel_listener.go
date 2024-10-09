@@ -24,7 +24,7 @@ func (o *BngConnChannelListener) Accept() (*BngConnChannel, error) {
 	id := strings.ReplaceAll(uuid.New().String(), "-", "")
 
 	// Eine neue Channel-Sitzung registrieren.
-	channlObject, err := o.socket.registerNewChannelSession(id)
+	channlObject, err := o.socket._RegisterNewChannelSession(id)
 	if err != nil {
 		return nil, fmt.Errorf("BngConnChannelListener->BngConnChannel: %s", err.Error())
 	}

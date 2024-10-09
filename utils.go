@@ -13,16 +13,18 @@ import (
 )
 
 // Speichert alle Zulässigen Transportdatentypen dar
-var supportedTypesString = map[string]bool{
-	"bool":   true,
-	"string": true,
-	"map":    true,
-	"slice":  true,
-	"int":    true,
-	"uint":   true,
-	"float":  true,
-	"struct": true,
-	"func":   true,
+var supportedTypes = map[string]bool{
+	"bool":       true,
+	"string":     true,
+	"map":        true,
+	"slice":      true,
+	"int":        true,
+	"uint":       true,
+	"float":      true,
+	"struct":     true,
+	"func":       true,
+	"ssl/tls":    true,
+	"mutexguard": true,
 }
 
 // isValidMessagePackType prüft, ob der gegebene Typ für MessagePack gültig ist
@@ -288,7 +290,7 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 		case reflect.Func:
 			// Es wird versucht die Funktion als Hidden Funktion zu Registrieren
 			id := uuid.New().String()
-			if err := socket.registerFunctionRoot(true, id, item); err != nil {
+			if err := socket._RegisterFunctionRoot(true, id, item); err != nil {
 				return nil, fmt.Errorf("bngsocket->RegisterFunction: " + err.Error())
 			}
 
@@ -440,7 +442,7 @@ func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ct
 		expectedType := fn.Type().In(i + 1) // Den erwarteten Typ der Funktion an der Stelle ermittelnconvertRPCCallParameters
 
 		// Es wird geprüft ob es sich um einen Zulässigen Datentyp handelt
-		if !supportedTypesString[strings.Split(param.Type, ":")[0]] {
+		if !supportedTypes[strings.Split(param.Type, ":")[0]] {
 			return nil, fmt.Errorf("unsuported datatype %s on %d", param.Type, i)
 		}
 
@@ -553,8 +555,14 @@ func proxyHiddenRpcFunction(s *BngConn, expectedType reflect.Type, hiddenFuncId 
 			params = append(params, item.Interface())
 		}
 
+		// Die Rückgabewerte der Funktionen werden getestet
+		reflectTypes := make([]reflect.Type, 0)
+		for i := range expectedType.NumOut() {
+			reflectTypes = append(reflectTypes, expectedType.Out(i))
+		}
+
 		// Fügt eine neue Funktion hinzu
-		rpcReturn, callError := s.callFunctionRoot(true, hiddenFuncId, params, expectedType.Out(0))
+		rpcReturn, callError := s._CallFunction(true, hiddenFuncId, params, reflectTypes)
 
 		// Rückgabewerte initialisieren
 		for i := 0; i < numOut; i++ {
@@ -588,19 +596,19 @@ func readProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
 		// Die Verbindung wurde getrennt (EOF)
-		socket.consensusConnectionClosedSignal()
+		socket._ConsensusConnectionClosedSignal()
 		return
 	} else if errors.Is(err, syscall.ECONNRESET) {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
+		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
 		return
 	} else if errors.Is(err, syscall.EPIPE) {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
+		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
 		return
 	} else {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
+		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
 		return
 	}
 }
@@ -610,19 +618,19 @@ func writeProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
 		// Die Verbindung wurde getrennt (EOF)
-		socket.consensusConnectionClosedSignal()
+		socket._ConsensusConnectionClosedSignal()
 		return
 	} else if errors.Is(err, syscall.ECONNRESET) {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
+		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
 		return
 	} else if errors.Is(err, syscall.EPIPE) {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
+		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
 		return
 	} else {
 		// Verbindung wurde vom Peer zurückgesetzt
-		socket.consensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
+		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
 		return
 	}
 }

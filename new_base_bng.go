@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-func newBaseBngSocketObject() *BngConn {
+func _NewBaseBngSocketObject() *BngConn {
 	// Das BngConn Objekt wird erzeugt
 	return &BngConn{
 		bp:                       &sync.WaitGroup{},

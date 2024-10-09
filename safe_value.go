@@ -22,8 +22,9 @@ func newSafeInt(v int) SafeInt {
 
 func newSafeValue[T any](v T) SafeValue[T] {
 	return SafeValue[T]{
-		value: &v,
-		lock:  new(sync.Mutex),
+		value:   &v,
+		lock:    new(sync.Mutex),
+		changes: 0,
 	}
 }
 
@@ -39,10 +40,13 @@ func newSafeMap[X any, T any]() SafeMap[X, T] {
 	}
 }
 
-func (t *SafeValue[T]) Set(v T) {
+func (t *SafeValue[T]) Set(v T) uint64 {
 	t.lock.Lock()
 	t.value = &v
+	t.changes = t.changes + 1
+	newtValue := t.changes
 	t.lock.Unlock()
+	return newtValue
 }
 
 func (t *SafeValue[T]) Get() (v T) {

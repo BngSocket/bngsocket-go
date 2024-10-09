@@ -34,12 +34,22 @@ func (m *BngConnChannel) Read(b []byte) (n int, err error) {
 			return 0, fmt.Errorf("BngConnChannel->Read: %s", err.Error())
 		}
 
+		// Es wird geprüft ob die Verbindung geschlossen wurde
+		if m.isClosed.Get() {
+
+		}
+
 		// Die Daten werden im aktuellen Cache zwischengespeichert, aber nur bis zur Länge des Buffers b
 		if len(b) < len(bytes) {
 			m.currentReadingCache.Set(bytes[len(b):]) // Speichert nur die Bytes, welche nicht in b geschrieben werden
 			n = copy(b, bytes[:len(b)])               // Kopiere die Bytes bis zur Länge von b
 		} else {
 			n = copy(b, bytes)
+		}
+
+		// Es wird geprüft ob die Verbindung geschlossen wurde
+		if m.isClosed.Get() {
+
 		}
 
 		// Es wird ein ACK zurückgesendet
@@ -60,12 +70,22 @@ func (m *BngConnChannel) Read(b []byte) (n int, err error) {
 		n = copy(b, readedCache)
 	}
 
+	// Es wird geprüft ob die Verbindung geschlossen wurde
+	if m.isClosed.Get() {
+
+	}
+
 	// Das Ergebniss wird zurückgegeben
 	return n, nil
 }
 
 // Write implementiert die Write-Methode des net.Conn-Interfaces.
 func (m *BngConnChannel) Write(b []byte) (n int, err error) {
+	// Es wird geprüft ob die Verbindung geschlossen wurde
+	if m.isClosed.Get() {
+
+	}
+
 	// Es wird versucht die Daten in den Channl zu schreiben
 	packageId, writedSize, err := channelDataTransport(m.socket, b, m.sesisonId)
 	if err != nil {
@@ -92,7 +112,17 @@ func (m *BngConnChannel) Write(b []byte) (n int, err error) {
 
 // Close implementiert die Close-Methode des net.Conn-Interfaces.
 func (m *BngConnChannel) Close() error {
-	m.isClosed.Set(true)
+	// Es wird geprüft ob das Aktuelle Objket bereits geschlossen wurde
+	if m.isClosed.Get() {
+		return fmt.Errorf("is always closed")
+	}
+
+	// Der Eigentlich Close Process wird durchgeführt
+	if err := m.processClose(true); err != nil {
+		return err
+	}
+
+	// Es ist kein Fehler aufgetreten
 	return nil
 }
 
@@ -118,6 +148,35 @@ func (m *BngConnChannel) SetReadDeadline(t time.Time) error {
 
 // SetWriteDeadline implementiert die SetWriteDeadline-Methode des net.Conn-Interfaces.
 func (m *BngConnChannel) SetWriteDeadline(t time.Time) error {
+	return nil
+}
+
+// Führt eine Reihe an Standardaufgaben durch wenn das Objekt geschlossen werden soll
+func (m *BngConnChannel) processClose(sendSignal bool) error {
+	// Das Objekt wird (gleich MAX_OPERATIONS = 1) geschlossen
+	if m.isClosed.Set(true) != 1 {
+		return fmt.Errorf("is always closed")
+	}
+
+	// Wird am ende ausgeführt um sicherzustellen das der Channel vernichtet wird
+	defer func() {
+		// Der BngConn wird mitgeteilt dass der Channl geschlosen wurde
+		if err := m.socket._UnregisterChannelSession(m.sesisonId); err != nil {
+			panic("BngConnChannel->Close: " + err.Error())
+		}
+	}()
+
+	// Die ACK Chan wird geschlosen
+	m.ackChan.Close()
+
+	// Es wird ein Close Paket an die Gegenseite gesendet
+	if sendSignal {
+		if err := channelWriteCloseSignal(m.socket, m.sesisonId); err != nil {
+			return fmt.Errorf("BngConnChannel->Close: " + err.Error())
+		}
+	}
+
+	// Es ist Kein Fehler aufgetreten
 	return nil
 }
 
@@ -159,7 +218,16 @@ func (m *BngConnChannel) enterChannelTransportStateResponseSate(packageId uint64
 func (m *BngConnChannel) enterSignal(signalId uint64) error {
 	// Es wird geprüft ob es sich um ein bekanntes Signal handelt
 	switch signalId {
+	case 0:
+		// Der Channel wird geschlossen
+		if err := m.processClose(false); err != nil {
+			return fmt.Errorf("BngConnChannel->enterSignal: " + err.Error())
+		}
 	default:
+		fmt.Println("UNKOWN SIG")
 		return fmt.Errorf("BngConnChannel->enterSignal: unkown signal")
 	}
+
+	// Es ist kein Fehler aufgetreten
+	return nil
 }

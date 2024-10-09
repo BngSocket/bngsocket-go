@@ -18,10 +18,10 @@ type RpcRequest struct {
 }
 
 type RpcResponse struct {
-	Type   string         `msgpack:"type"`
-	Error  string         `msgpack:"error,omitempty"`
-	Id     string         `msgpack:"id"`
-	Return *RpcDataCapsle `msgpack:"return"`
+	Type   string           `msgpack:"type"`
+	Error  string           `msgpack:"error,omitempty"`
+	Id     string           `msgpack:"id"`
+	Return []*RpcDataCapsle `msgpack:"return"`
 }
 
 type RpcHiddenFunction struct {
@@ -61,7 +61,7 @@ type ChannelTransportStateResponse struct {
 }
 
 // Wird verwendet um einen Channel Ordnungsgemäß zu schließen
-type ChannlTransportSignal struct {
+type ChannlSessionTransportSignal struct {
 	Type             string `msgpack:"type"`
 	ChannelSessionId string `msgpack:"csid"`
 	Signal           uint64 `msgpack:"pid"`

@@ -82,7 +82,7 @@ func constantReading(o *BngConn) {
 				// Die Daten werden durch die GoRoutine verarbeitet
 				go func(data []byte) {
 					defer o.bp.Done()
-					o.processReadedData(data)
+					o._ProcessReadedData(data)
 				}(transportBytes)
 			} else {
 				// Der Fehler wird ausgewertet
@@ -112,7 +112,7 @@ func constantWriting(o *BngConn) {
 			}
 
 			// Es handelt sich um einen Schwerwiegenden Fehler, die Verbindung wird getrennt
-			o.consensusProtocolTermination(fmt.Errorf("internal chan error"))
+			o._ConsensusProtocolTermination(fmt.Errorf("internal chan error"))
 
 			// Schleife, abbruch
 			break
@@ -127,7 +127,7 @@ func constantWriting(o *BngConn) {
 			// Es wird geprüft ob die Verbindung getrennt wurde
 			if connectionIsClosed(o) {
 				// Der Fehler wird verarbeitet
-				o.consensusConnectionClosedSignal()
+				o._ConsensusConnectionClosedSignal()
 				break
 			}
 
@@ -172,7 +172,7 @@ func constantWriting(o *BngConn) {
 		// Es wird geprüft ob die Verbindung getrennt wurde
 		if connectionIsClosed(o) {
 			// Der Fehler wird verarbeitet
-			o.consensusConnectionClosedSignal()
+			o._ConsensusConnectionClosedSignal()
 			break
 		}
 

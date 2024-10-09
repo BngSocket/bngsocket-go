@@ -91,7 +91,7 @@ func responseNewChannelSession(socket *BngConn, channelRequestId string, channel
 
 // responseChannelNotOpen sendet ein Signal zurück, dass der angegebene Channel nicht geöffnet ist.
 func responseChannelNotOpen(socket *BngConn, channelId string) error {
-	rt := &ChannlTransportSignal{
+	rt := &ChannlSessionTransportSignal{
 		Type:             "chsig",   // Typ des Signals
 		ChannelSessionId: channelId, // ID des nicht geöffneten Channels
 		Signal:           0,         // Signalwert (0 bedeutet "nicht geöffnet")
@@ -160,11 +160,55 @@ func channelWriteACK(conn *BngConn, pid uint64, sessionId string) error {
 	return nil
 }
 
-func socketWriteRpcRequest(conn *BngConn, value *RpcDataCapsle, id string) error {
+func socketWriteRpcSuccessResponse(conn *BngConn, value []*RpcDataCapsle, id string) error {
 	rt := &RpcResponse{
 		Type:   "rpcres",
 		Id:     id,
 		Return: value,
+	}
+
+	// Den RpcRequest in Bytes serialisieren.
+	bdata, err := msgpack.Marshal(rt)
+	if err != nil {
+		return fmt.Errorf("channelWriteACK[0]: %s", err.Error())
+	}
+
+	// Die Bytes in den Schreibkanal des Sockets schreiben.
+	if err := writeBytesIntoChan(conn, bdata); err != nil {
+		return fmt.Errorf("channelWriteACK[1]: %s", err.Error())
+	}
+
+	// Es ist kein Fehler aufgetreten, Rückgabe nil.
+	return nil
+}
+
+func socketWriteRpcErrorResponse(conn *BngConn, errstr string, id string) error {
+	rt := &RpcResponse{
+		Type:  "rpcres",
+		Id:    id,
+		Error: errstr,
+	}
+
+	// Den RpcRequest in Bytes serialisieren.
+	bdata, err := msgpack.Marshal(rt)
+	if err != nil {
+		return fmt.Errorf("channelWriteACK[0]: %s", err.Error())
+	}
+
+	// Die Bytes in den Schreibkanal des Sockets schreiben.
+	if err := writeBytesIntoChan(conn, bdata); err != nil {
+		return fmt.Errorf("channelWriteACK[1]: %s", err.Error())
+	}
+
+	// Es ist kein Fehler aufgetreten, Rückgabe nil.
+	return nil
+}
+
+func channelWriteCloseSignal(conn *BngConn, channelSessionId string) error {
+	rt := &ChannlSessionTransportSignal{
+		Type:             "chsig",
+		ChannelSessionId: channelSessionId,
+		Signal:           0,
 	}
 
 	// Den RpcRequest in Bytes serialisieren.

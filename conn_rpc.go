@@ -3,8 +3,6 @@ package bngsocket
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Wird verwendet um RPC Anfragen zu verarbeiten
@@ -50,78 +48,56 @@ func (o *BngConn) processRpcRequest(rpcReq *RpcRequest) error {
 		return fmt.Errorf("bngsocket->processRpcRequest[3]: " + err.Error())
 	}
 
-	// Es muss mindestens 1 Wert in der Rückgabe vorhanden sein
+	// Es muss mindestens 1 Eintrag vorhanden sein,
 	if len(results) < 1 {
-		return fmt.Errorf("bngsocket->processRpcRequest[9]: invalid function call return size")
+		return fmt.Errorf("return need more the zero values")
 	}
 
-	// Die Rückgabewerte werden nacheinander abgearbeitet
-	var response *RpcResponse
-	values := make([]*RpcDataCapsle, 0)
-	for i := range results {
-		// Es wird geprüft ob es sich um den letzten Eintrag handelt
-		if i == len(results)-1 {
-			// Prüfen, ob der Rückgabewert ein Fehler ist
-			err := results[i].Interface()
-
-			// Es wird geprüft ob der Fehler nill ist
-			if err == nil {
-				// Das Rückgabe Objekt wird erzeugt
-				response = &RpcResponse{
-					Id:   rpcReq.Id,
-					Type: "rpcres",
-				}
-			} else {
-				// Der Fehler wird umgewandelt
-				cerr, isok := err.(error)
-				if !isok {
-					return fmt.Errorf("bngsocket->processRpcRequest[4]: error converting errror")
-				}
-
-				// Der Fehler wird gebaut
-				response = &RpcResponse{
-					Id:    rpcReq.Id,
-					Type:  "rpcres",
-					Error: cerr.Error(),
-				}
-			}
-		} else {
-			// Es wird geprüft ob es sich um einen PTR handelt
-			if results[i].Kind() == reflect.Ptr {
-				// Es muss sich um ein Struct handeln
-				if results[i].Elem().Kind() != reflect.Struct {
-					return fmt.Errorf("bngsocket->processRpcRequest[6]: only structs as pointer allowed")
-				}
-
-				// Die Rückgabewerte werden für den Transport Vorbereitet
-				valuet, err := processRpcGoDataTypeTransportable(o, results[i].Interface())
-				if err != nil {
-					return fmt.Errorf("bngsocket->processRpcRequest[7]: " + err.Error())
-				}
-				value = valuet[0]
-			} else if results[i].Kind() == reflect.Func {
-				fmt.Println("RETURN_FUNC")
-			} else {
-				// Die Rückgabewerte werden für den Transport Vorbereitet
-				preparedData, err := processRpcGoDataTypeTransportable(o, results[i].Interface())
-				if err != nil {
-					return fmt.Errorf("bngsocket->processRpcRequest[8]:  " + err.Error())
-				}
-				values = append(values, preparedData[0])
+	// Der Letzte Eintrag muss ein Error sein
+	lasteElementOnResultsArray := results[len(results)-1]
+	if lasteElementOnResultsArray.Type().Implements(reflect.TypeOf((*error)(nil)).Elem()) {
+		// Nun prüfe, ob der Fehler tatsächlich nil ist oder nicht
+		if !lasteElementOnResultsArray.IsNil() {
+			// Der Fehler wird zurückgesendet
+			if err := socketWriteRpcErrorResponse(o, lasteElementOnResultsArray.String(), rpcReq.Id); err != nil {
+				return fmt.Errorf("bngsocket->processRpcRequest: " + err.Error())
 			}
 		}
 	}
 
-	// Die Rückgabe wird in Bytes umgewandelt
-	bytedResponse, err := msgpack.Marshal(response)
-	if err != nil {
-		return fmt.Errorf("bngsocket->processRpcRequest[10]: " + err.Error())
+	// Die Rückgabewerte werden nacheinander abgearbeitet
+	// der Letzte Eintrag im Results Array wird ausgelassen.
+	values := make([]*RpcDataCapsle, 0)
+	for i := 0; i < len(results)-1; i++ {
+		// Es wird geprüft ob es sich um einen PTR handelt
+		switch {
+		case results[i].Kind() == reflect.Ptr:
+			// Es muss sich um ein Struct handeln
+			if results[i].Elem().Kind() != reflect.Struct {
+				return fmt.Errorf("bngsocket->processRpcRequest[6]: only structs as pointer allowed")
+			}
+
+			// Die Rückgabewerte werden für den Transport Vorbereitet
+			valuet, err := processRpcGoDataTypeTransportable(o, results[i].Interface())
+			if err != nil {
+				return fmt.Errorf("bngsocket->processRpcRequest[7]: " + err.Error())
+			}
+			values = append(values, valuet[0])
+		case results[i].Kind() == reflect.Func:
+			fmt.Println("RETURN_FUNC")
+		default:
+			// Die Rückgabewerte werden für den Transport Vorbereitet
+			preparedData, err := processRpcGoDataTypeTransportable(o, results[i].Interface())
+			if err != nil {
+				return fmt.Errorf("bngsocket->processRpcRequest[8]:  " + err.Error())
+			}
+			values = append(values, preparedData[0])
+		}
 	}
 
-	// Die Daten werden zur bestätigung zurückgesendet
-	// Das Paket wird gesendet
-	if err := writeBytesIntoChan(o, bytedResponse); err != nil {
-		return fmt.Errorf("bngsocket->processRpcRequest[11]: " + err.Error())
+	// Die Antwort wird zurückgesendet
+	if err := socketWriteRpcSuccessResponse(o, values, rpcReq.Id); err != nil {
+		return fmt.Errorf("processRpcRequest: " + err.Error())
 	}
 
 	// Die Antwort wurde erfolgreich zurückgewsendet

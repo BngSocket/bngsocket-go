@@ -11,8 +11,9 @@ type SafeChan[T any] struct {
 }
 
 type SafeValue[T any] struct {
-	value *T
-	lock  *sync.Mutex
+	value   *T
+	changes uint64
+	lock    *sync.Mutex
 }
 
 type SafeInt struct {

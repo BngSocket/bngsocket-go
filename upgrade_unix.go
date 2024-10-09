@@ -9,10 +9,10 @@ import (
 )
 
 // Wird verwendet um Vorhandene Sockets zu einem bngsocket zu verwandeln
-func UpgradeSocketToBngSocket(socket net.Conn) (*BngConn, error) {
+func UpgradeSocketToBngConn(socket net.Conn) (*BngConn, error) {
 	// Es wird geprüft ob es sich um einen Zulässigen Socket handelt
 	// außerdem wird das Basis BNG Objekt erzeugt
-	client := newBaseBngSocketObject()
+	client := _NewBaseBngSocketObject()
 	switch cconn := socket.(type) {
 	case *net.UnixConn:
 		client.conn = cconn
