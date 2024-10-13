@@ -67,36 +67,17 @@ func (o *BngConn) processRpcRequest(rpcReq *RpcRequest) error {
 
 	// Die Rückgabewerte werden nacheinander abgearbeitet
 	// der Letzte Eintrag im Results Array wird ausgelassen.
-	values := make([]*RpcDataCapsle, 0)
-	for i := 0; i < len(results)-2; i++ {
-		// Es wird geprüft ob es sich um einen PTR handelt
-		switch {
-		case results[i].Kind() == reflect.Ptr:
-			// Es muss sich um ein Struct handeln
-			if results[i].Elem().Kind() != reflect.Struct {
-				return fmt.Errorf("bngsocket->processRpcRequest[6]: only structs as pointer allowed")
-			}
-
-			// Die Rückgabewerte werden für den Transport Vorbereitet
-			valuet, err := processRpcGoDataTypeTransportable(o, results[i].Interface())
-			if err != nil {
-				return fmt.Errorf("bngsocket->processRpcRequest[7]: " + err.Error())
-			}
-			values = append(values, valuet[0])
-		case results[i].Kind() == reflect.Func:
-			fmt.Println("RETURN_FUNC")
-		default:
-			// Die Rückgabewerte werden für den Transport Vorbereitet
-			preparedData, err := processRpcGoDataTypeTransportable(o, results[i].Interface())
-			if err != nil {
-				return fmt.Errorf("bngsocket->processRpcRequest[8]:  " + err.Error())
-			}
-			values = append(values, preparedData[0])
-		}
+	values := make([]interface{}, 0)
+	for i := range len(results) - 1 {
+		values = append(values, results[i].Interface())
+	}
+	preparedValues, err := processRpcGoDataTypeTransportable(o, values...)
+	if err != nil {
+		return fmt.Errorf("processRpcRequest: " + err.Error())
 	}
 
 	// Die Antwort wird zurückgesendet
-	if err := socketWriteRpcSuccessResponse(o, values, rpcReq.Id); err != nil {
+	if err := socketWriteRpcSuccessResponse(o, preparedValues, rpcReq.Id); err != nil {
 		return fmt.Errorf("processRpcRequest: " + err.Error())
 	}
 

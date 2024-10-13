@@ -226,7 +226,6 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 		// Refelction wird auf 'fn' angewendet
 		fnValue := reflect.ValueOf(item)
 		fnType := fnValue.Type()
-
 		// Der Datentyp wird extrahiert
 		switch fnType.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -283,51 +282,34 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 	return newItems, nil
 }
 
-// Wandelt Transportierte Werte in Go Werte um
-func processValueToGoValue(value any, expectedType reflect.Type, socket *BngConn) (reflect.Value, error) {
+// Wandelt Daten mittels Angabe eines Refelect Types um
+func processGoValueToRelectType(value any, expectedType reflect.Type, socket *BngConn) (reflect.Value, error) {
 	val := reflect.ValueOf(value)
 	switch expectedType.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		// Es wird geprüft ob es sich um einen Integerwert handelt
 		if expectedType.Kind() != reflect.Int && expectedType.Kind() != reflect.Int8 && expectedType.Kind() != reflect.Int16 && expectedType.Kind() != reflect.Int32 && expectedType.Kind() != reflect.Int64 {
-			return reflect.Value{}, fmt.Errorf("invalid integer transmitted")
-		}
-
-		// Konvertiere in den exakten Integer-Typ, der erwartet wird
-		if val.Kind() >= reflect.Int && val.Kind() <= reflect.Int64 {
-			// Konvertiere Ganzzahlen entsprechend dem erwarteten Typ
-			return val.Convert(expectedType), nil
+			return reflect.Value{}, fmt.Errorf("invalid integer transmitted 1")
 		}
 
 		// Es wird ein Leeres Int zurückgegeben
-		return reflect.Zero(expectedType), nil
+		return val.Convert(expectedType), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		// Es wird geprüft ob es sich um einen Integerwert handelt
 		if expectedType.Kind() != reflect.Uint && expectedType.Kind() != reflect.Uint8 && expectedType.Kind() != reflect.Uint16 && expectedType.Kind() != reflect.Uint32 && expectedType.Kind() != reflect.Uint64 {
-			return reflect.Value{}, fmt.Errorf("invalid integer transmitted")
-		}
-
-		// Konvertiere in den exakten Integer-Typ, der erwartet wird
-		if val.Kind() >= reflect.Uint && val.Kind() <= reflect.Uint64 {
-			// Konvertiere Ganzzahlen entsprechend dem erwarteten Typ
-			return val.Convert(expectedType), nil
+			return reflect.Value{}, fmt.Errorf("invalid integer transmitted 2")
 		}
 
 		// Es wird ein Leeres Int zurückgegeben
-		return reflect.Zero(expectedType), nil
+		return val.Convert(expectedType), nil
 	case reflect.Float32, reflect.Float64:
 		// Wandelt den Datentypen um
 		if expectedType.Kind() != reflect.Float32 && expectedType.Kind() != reflect.Float64 {
 			return reflect.Value{}, fmt.Errorf("invalid float transmitted")
 		}
 
-		// Konvertiere in den exakten Float-Typ, der erwartet wird
-		if val.Kind() == reflect.Float32 || val.Kind() == reflect.Float64 {
-			return val.Convert(expectedType), nil
-		}
-
 		// Es wird ein Leeres Int zurückgegeben
-		return reflect.Zero(expectedType), nil
+		return val.Convert(expectedType), nil
 	case reflect.Bool:
 		return reflect.ValueOf(value), nil
 	case reflect.String:
@@ -394,6 +376,34 @@ func processValueToGoValue(value any, expectedType reflect.Type, socket *BngConn
 	}
 }
 
+// Wandelt RpcDataCapsle zurück in Go Datensätze
+func processRpcDataCapsleToGoValue(value *RpcDataCapsle, expectedType reflect.Type, socket *BngConn) (reflect.Value, error) {
+	switch expectedType.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return processGoValueToRelectType(value.Value, expectedType, socket)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return processGoValueToRelectType(value.Value, expectedType, socket)
+	case reflect.Float32, reflect.Float64:
+		return processGoValueToRelectType(value.Value, expectedType, socket)
+	case reflect.Bool:
+		return processGoValueToRelectType(value.Value, expectedType, socket)
+	case reflect.String:
+		return processGoValueToRelectType(value.Value, expectedType, socket)
+	case reflect.Slice:
+		return processGoValueToRelectType(value.Value, expectedType, socket)
+	case reflect.Map:
+		return processGoValueToRelectType(value.Value, expectedType, socket)
+	case reflect.Ptr:
+		return processGoValueToRelectType(value.Value, expectedType, socket)
+	case reflect.Func:
+		return processGoValueToRelectType(value.Value, expectedType, socket)
+	case reflect.Struct:
+		return processGoValueToRelectType(value.Value, expectedType, socket)
+	default:
+		return reflect.Value{}, fmt.Errorf("processValueToGoInterface: unsupoorted datatype")
+	}
+}
+
 // Konvertiert übertragene Parameter wirder zurück in Go Werte um
 func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ctx *BngRequest, params ...*RpcDataCapsle) ([]reflect.Value, error) {
 	// Parametertypen prüfen und aufbereiten
@@ -416,7 +426,7 @@ func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ct
 		}
 
 		// Der Wert wird eingelesen
-		cvalue, err := processValueToGoValue(param.Value, expectedType, socket)
+		cvalue, err := processRpcDataCapsleToGoValue(param, expectedType, socket)
 		if err != nil {
 			return nil, fmt.Errorf("convertRPCCallParameterBackToGoValues: " + err.Error())
 		}
@@ -440,7 +450,7 @@ func processRPCCallResponseDataToGoDatatype(rdc *RpcDataCapsle, retunDataType re
 	case rdc.Type == "int":
 		// Es wird geprüft ob es sich um einen Integerwert handelt
 		if valType.Kind() != reflect.Int && valType.Kind() != reflect.Int8 && valType.Kind() != reflect.Int16 && valType.Kind() != reflect.Int32 && valType.Kind() != reflect.Int64 {
-			return nil, fmt.Errorf("invalid integer transmitted")
+			return nil, fmt.Errorf("invalid integer transmitted 3")
 		}
 
 		// Konvertiere in den exakten Integer-Typ, der erwartet wird
@@ -451,7 +461,10 @@ func processRPCCallResponseDataToGoDatatype(rdc *RpcDataCapsle, retunDataType re
 	case rdc.Type == "uint":
 		// Es wird geprüft ob es sich um einen Integerwert handelt
 		if valType.Kind() != reflect.Uint && valType.Kind() != reflect.Uint8 && valType.Kind() != reflect.Uint16 && valType.Kind() != reflect.Uint32 && valType.Kind() != reflect.Uint64 {
-			return nil, fmt.Errorf("invalid integer transmitted")
+			// Wenn der Übertragene Datentyp kein Uint ist, wird geprüft ob es sich um ein Integer handelt
+			if valType.Kind() != reflect.Int && valType.Kind() != reflect.Int8 && valType.Kind() != reflect.Int16 && valType.Kind() != reflect.Int32 && valType.Kind() != reflect.Int64 {
+				return nil, fmt.Errorf("invalid integer transmitted 4")
+			}
 		}
 
 		// Konvertiere in den exakten Integer-Typ, der erwartet wird
@@ -531,7 +544,7 @@ func proxyHiddenRpcFunction(s *BngConn, expectedType reflect.Type, hiddenFuncId 
 		}
 
 		// Fügt eine neue Funktion hinzu
-		rpcReturn, callError := s._CallFunction(true, hiddenFuncId, params, reflectTypes)
+		rpcReturn, callError := s._CallFunctionRoot(true, hiddenFuncId, params, reflectTypes)
 
 		// Rückgabewerte initialisieren
 		for i := 0; i < numOut; i++ {
@@ -544,7 +557,7 @@ func proxyHiddenRpcFunction(s *BngConn, expectedType reflect.Type, hiddenFuncId 
 				}
 			} else {
 				if rpcReturn != nil {
-					v, err := processValueToGoValue(rpcReturn, outType, nil)
+					v, err := processGoValueToRelectType(rpcReturn, outType, nil)
 					if err != nil {
 						fmt.Println(err)
 					}

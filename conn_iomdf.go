@@ -399,11 +399,11 @@ func (s *BngConn) _RegisterFunctionRoot(hidden bool, nameorid string, fn interfa
 }
 
 // Ruft eine Funktion auf der Gegenseite auf
-func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
+func (s *BngConn) _CallFunctionRoot(hiddencall bool, nameorid string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
 	// Die Parameter werden umgewandelt
 	convertedParams, err := processRpcGoDataTypeTransportable(s, params...)
 	if err != nil {
-		return nil, fmt.Errorf("bngsocket->_CallFunction[0]: " + err.Error())
+		return nil, fmt.Errorf("bngsocket->_CallFunctionRoot[0]: " + err.Error())
 	}
 
 	// Es wird ein RpcRequest Paket erstellt
@@ -418,7 +418,7 @@ func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []inter
 	// Das Paket wird in Bytes umgewandelt
 	bytedData, err := msgpack.Marshal(rpcreq)
 	if err != nil {
-		return nil, fmt.Errorf("bngsocket->_CallFunction[1]: " + err.Error())
+		return nil, fmt.Errorf("bngsocket->_CallFunctionRoot[1]: " + err.Error())
 	}
 
 	// Der Antwort Chan wird erzeugt
@@ -429,7 +429,7 @@ func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []inter
 
 	// Das Paket wird gesendet
 	if err := writeBytesIntoChan(s, bytedData); err != nil {
-		return nil, fmt.Errorf("bngsocket->_CallFunction: " + err.Error())
+		return nil, fmt.Errorf("bngsocket->_CallFunctionRoot: " + err.Error())
 	}
 
 	// Es wird auf die Antwort gewartet
@@ -451,12 +451,15 @@ func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []inter
 	if response.Return != nil {
 		// Es wird geprüft ob die Funktion auf der Aufrufendenseite eine Rückgabe erwartet
 		if returnDataType == nil {
-			return nil, fmt.Errorf("bngsocket->_CallFunction[2]: wanted return, none, has return")
+			return nil, fmt.Errorf("bngsocket->_CallFunctionRoot[2]: wanted return, none, has return")
 		}
 
 		// Es müssen Soviele Rückgaben vorhanden sein, wie gefordert wurde
 		if len(response.Return) != len(returnDataType) {
-			return nil, fmt.Errorf("bngsocket->_CallFunction[2]: invalid function return signature")
+			for _, item := range response.Return {
+				fmt.Println(item)
+			}
+			return nil, fmt.Errorf("bngsocket->_CallFunctionRoot[2]: invalid function return signature, has %d, need %d", len(response.Return), len(returnDataType))
 		}
 
 		// Es werden alle Einträge abgearbeitet
@@ -464,7 +467,7 @@ func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []inter
 		for i := range response.Return {
 			value, err := processRPCCallResponseDataToGoDatatype(response.Return[i], returnDataType[i])
 			if err != nil {
-				return nil, fmt.Errorf("bngsocket->_CallFunction[3]: " + err.Error())
+				return nil, fmt.Errorf("bngsocket->_CallFunctionRoot[3]: " + err.Error())
 			}
 			returnValues = append(returnValues, value)
 		}
