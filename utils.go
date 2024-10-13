@@ -190,37 +190,13 @@ func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 
 	// Es wird geprüft ob der Letze Eintrag ein Fehler ist
 	lastItem := fnType.Out(fnType.NumOut() - 1)
-	if !lastItem.Implements(reflect.TypeOf((*error)(nil)).Elem()) {
-		return fmt.Errorf("validateRPCFunction[10]: if the function only has one return value, it must be of type error")
+	if !isErrorType(lastItem) {
+		return fmt.Errorf("validateRPCFunction[11]: if the function only has one return value, it must be of type error")
 	}
 
-	// Es werden alle Rückgabewerte Abgearbeitet
-	for i := 0; i < fnType.NumOut()-1; i++ {
+	// Es werden alle Rückgabewerte Abgearbeitet, bis auf den letzten
+	for i := 0; i < fnType.NumOut()-2; i++ {
 		outType := fnType.Out(i)
-		if i == fnType.NumOut()-1 {
-			if outType.Implements(reflect.TypeOf((*error)(nil)).Elem()) {
-				fmt.Println("Der letzte Rückgabewert ist ein Error-Typ:", outType)
-			} else {
-				fmt.Println("Der letzte Rückgabewert ist kein Error-Typ:", outType)
-			}
-		} else {
-			// Andere Rückgabewerte können auch behandelt oder ignoriert werden
-			fmt.Printf("Rückgabewert %d ist vom Typ: %v\n", i, outType)
-		}
-	}
-
-	// Rückgabewerte prüfen
-	numOut := fnType.NumOut()
-	if numOut == 0 {
-		return fmt.Errorf("validateRPCFunction[10]: the function must have at least one return value")
-	} else if numOut == 1 {
-		// Ein Rückgabewert, dieser muss error sein
-		if !isErrorType(fnType.Out(0)) {
-			return fmt.Errorf("validateRPCFunction[11]: if the function only has one return value, it must be of type error")
-		}
-	} else if numOut == 2 {
-		// Falls der erste Rückgabewert ein Pointer ist, muss es sich um ein Struct handeln
-		outType := fnType.Out(0)
 		if outType.Kind() == reflect.Ptr {
 			outType := fnType.Out(0).Elem()
 			if outType.Kind() != reflect.Struct {
@@ -237,13 +213,6 @@ func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 				return fmt.Errorf("der erste Rückgabewert muss ein zulässiger MessagePack-Typ sein")
 			}
 		}
-
-		// Zweiter Rückgabewert muss vom Typ error sein
-		if !isErrorType(fnType.Out(1)) {
-			return fmt.Errorf("der zweite Rückgabewert muss vom Typ error sein")
-		}
-	} else {
-		return fmt.Errorf("die Funktion darf maximal zwei Rückgabewerte haben")
 	}
 
 	// Es handelt sich um eine zulässige Funktion
@@ -647,7 +616,7 @@ func connectionIsClosed(ipcc *BngConn) bool {
 	defer ipcc.mu.Unlock()
 
 	// Der Wert wird ermittelt
-	value := bool(ipcc.closed.Get() || ipcc.closing.Get() || ipcc.runningError != nil)
+	value := bool(ipcc.closed.Get() || ipcc.closing.Get() || ipcc.runningError.Get() != nil)
 
 	// Der Wert wird zurückgegeben
 	return value

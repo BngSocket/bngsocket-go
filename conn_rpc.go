@@ -68,7 +68,7 @@ func (o *BngConn) processRpcRequest(rpcReq *RpcRequest) error {
 	// Die Rückgabewerte werden nacheinander abgearbeitet
 	// der Letzte Eintrag im Results Array wird ausgelassen.
 	values := make([]*RpcDataCapsle, 0)
-	for i := 0; i < len(results)-1; i++ {
+	for i := 0; i < len(results)-2; i++ {
 		// Es wird geprüft ob es sich um einen PTR handelt
 		switch {
 		case results[i].Kind() == reflect.Ptr:

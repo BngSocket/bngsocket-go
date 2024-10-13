@@ -1,9 +1,12 @@
 package bngsocket
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/vmihailenco/msgpack/v5"
@@ -72,7 +75,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 	case "chreq", "chreqresp", "chst", "chsig", "chtsr":
 		switch typeInfo.Type {
 		case "chreq":
-			// Der Datensatz wird als RPC Regquest eingelesen
+			// Der Datensatz wird ChannelRequest eingelesen
 			var channlrequest *ChannelRequest
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
@@ -92,7 +95,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 				return
 			}
 		case "chreqresp":
-			// Der Datensatz wird als RPC Regquest eingelesen
+			// Der Datensatz wird als ChannelRequestResponse eingelesen
 			var channlrequest *ChannelRequestResponse
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
@@ -112,7 +115,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 				return
 			}
 		case "chst":
-			// Der Datensatz wird als RPC Regquest eingelesen
+			// Der Datensatz wird als ChannelSessionDataTransport eingelesen
 			var channlrequest *ChannelSessionDataTransport
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
@@ -132,7 +135,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 				return
 			}
 		case "chsig":
-			// Der Datensatz wird als RPC Regquest eingelesen
+			// Der Datensatz wird als ChannelSessionTransportSignal eingelesen
 			var channlrequest *ChannlSessionTransportSignal
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
@@ -152,7 +155,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 				return
 			}
 		case "chtsr":
-			// Der Datensatz wird als RPC Regquest eingelesen
+			// Der Datensatz wird als ChannelTransportStateResponse eingelesen
 			var channlrequest *ChannelTransportStateResponse
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
@@ -182,13 +185,16 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 	}
 }
 
-// Wird verwendet um eintreffende Channel Pakete zu verarbeiten
+// Wird verwendet um eintreffende Channel Request Pakete zu verarbeiten
 func (s *BngConn) _ProcessIncommingChannelRequestPackage(channlrequest *ChannelRequest) error {
 	// Es wird geprüft ob es einen Offenen Listener für die Angefordnerte ID gibt
 	channelListener, foundListener := s.openChannelListener.Load(channlrequest.RequestedChannelId)
 	if !foundListener {
 		// Es wird mitgeteilt dass es sich um einen Unbekannten Channel handelt
 		if err := responseUnkownChannel(s, channlrequest.RequestId); err != nil {
+			if errors.Is(err, io.EOF) {
+				return io.EOF
+			}
 			return fmt.Errorf("bngsocket->_ProcessIncommingChannelRequestPackage[0]: transmittion error")
 		}
 		return nil
@@ -203,7 +209,7 @@ func (s *BngConn) _ProcessIncommingChannelRequestPackage(channlrequest *ChannelR
 	return nil
 }
 
-// Wird verwendet um eintreffende Channel Pakete zu verarbeiten
+// Wird verwendet um eintreffende Channel Request Response Pakete zu verarbeiten
 func (s *BngConn) _ProcessIncommingChannelRequestResponsePackage(channlrequest *ChannelRequestResponse) error {
 	// Der Mutex wird verwendet
 	s.mu.Lock()
@@ -222,11 +228,12 @@ func (s *BngConn) _ProcessIncommingChannelRequestResponsePackage(channlrequest *
 	return nil
 }
 
-// Wird verwendet um eintreffende Channel Pakete zu verarbeiten
+// Wird verwendet um eintreffende Channel Session Data Transport Pakete zu verarbeiten
 func (s *BngConn) _ProcessIncommingChannelSessionPackage(channlrequest *ChannelSessionDataTransport) error {
-	// Der Mutex wird verwendet
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// Es wird geprüft ob die Verbindung geschlossen wurde
+	if s.closed.Get() {
+		return io.EOF
+	}
 
 	// Es wird geprüft ob es einen offnen Channel gibt,
 	// wenn ja wird das Paket an diesen Weitergereicht,
@@ -251,7 +258,7 @@ func (s *BngConn) _ProcessIncommingChannelSessionPackage(channlrequest *ChannelS
 	return nil
 }
 
-// Wird verwendet um eintreffende ACK Pakete entgegen zu nehmen
+// Wird verwendet um eintreffende Übermittlungs Bestätigungen für Channel zu verarbeiten
 func (s *BngConn) _ProcessIncommingChannelTransportStateResponsePackage(channlrequest *ChannelTransportStateResponse) error {
 	// Der Mutex wird verwendet
 	s.mu.Lock()
@@ -316,15 +323,15 @@ func (o *BngConn) _ConsensusProtocolTermination(reason error) {
 	defer o.mu.Unlock()
 
 	// Es wird geprüft ob beretis ein Fehler vorhanden ist
-	if o.runningError != nil {
+	if o.runningError.Get() != nil {
 		return
 	}
 
 	// Der Fehler wird geschrieben
 	if reason == nil {
-		o.runningError = fmt.Errorf("")
+		o.runningError.Set(fmt.Errorf(""))
 	} else {
-		o.runningError = reason
+		o.runningError.Set(reason)
 	}
 
 	// Es wird Signalisiert dass die Verbindung geschlossen wurde
@@ -341,7 +348,7 @@ func (o *BngConn) _ConsensusConnectionClosedSignal() {
 	defer o.mu.Unlock()
 
 	// Es wird geprüft ob beretis ein Fehler vorhanden ist
-	if o.runningError != nil {
+	if o.runningError.Get() != nil {
 		return
 	}
 
@@ -481,12 +488,15 @@ func (s *BngConn) _RegisterNewChannelSession(channelSessionId string) (*BngConnC
 	bngsoc := &BngConnChannel{
 		socket:              s,
 		sesisonId:           channelSessionId,
+		channelRunningError: newSafeValue[error](nil),
 		isClosed:            newSafeBool(false),
 		waitOfPackageACK:    newSafeBool(false),
 		openReaders:         newSafeInt(0),
+		openWriters:         newSafeInt(0),
 		currentReadingCache: newSafeBytes(nil),
 		bytesDataInCache:    newBngConnChannelByteCache(),
 		ackChan:             newSafeAck(),
+		mu:                  new(sync.Mutex),
 	}
 
 	// Der Channel wird zwischengespeichert

@@ -19,5 +19,6 @@ func _NewBaseBngSocketObject() *BngConn {
 		openChannelListener:      newSafeMap[string, *BngConnChannelListener](),
 		openChannelInstances:     newSafeMap[string, *BngConnChannel](),
 		openChannelJoinProcesses: SafeMap[string, chan *ChannelRequestResponse]{Map: new(sync.Map)},
+		runningError:             newSafeValue[error](nil),
 	}
 }

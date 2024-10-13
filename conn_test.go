@@ -1,6 +1,7 @@
 package bngsocket
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -10,13 +11,13 @@ import (
 
 const SOCKET_PATH = "/tmp/testunixsocket"
 
-func client_channel_test(_ *testing.T, upgrConn *BngConn) error {
+func client_channel_test(t *testing.T, upgrConn *BngConn) error {
 	// Es wird versucht auf einen Channel zu Joinen
 	channel, err := upgrConn.JoinChannel("test-channel")
 	if err != nil {
 		return err
 	}
-	fmt.Println("Client:", channel.GetSessionId())
+	t.Log("Client:", channel.GetSessionId())
 
 	// Es werden Daten in diesem Channel übertragen
 	b := []byte("hallo welt")
@@ -24,7 +25,17 @@ func client_channel_test(_ *testing.T, upgrConn *BngConn) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Write complete:", n, "of", len(b))
+	t.Log("Write complete:", n, "of", len(b))
+
+	// Der Gegenseite wird geantwortet
+	data := make([]byte, 4096)
+	i, err := channel.Read(data)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(data[:i], b) {
+		return fmt.Errorf("invald data resend")
+	}
 
 	// Der Channel wird geschlossen
 	if closeErr := channel.Close(); closeErr != nil {
@@ -32,6 +43,61 @@ func client_channel_test(_ *testing.T, upgrConn *BngConn) error {
 	}
 
 	// Es ist kein Fehler aufgetreten
+	return nil
+}
+
+func server_channel_test(t *testing.T, upgrConn *BngConn) error {
+	// Es wird ein neuer Channel bereitgestellt
+	testChannel, err := upgrConn.OpenChannelListener("test-channel")
+	if err != nil {
+		return err
+	}
+
+	// Es wird eine Routine gestartet welche neue Anfrage auf dem Channel entgegen nimmt
+	go func() {
+		// Es wird auf neue Channel Joins gewartet
+		t.Log("Warte auf neue eingehende Channel anfrage")
+		chann, err := testChannel.Accept()
+		if err != nil {
+			panic(err)
+		}
+		t.Log("Server:", chann.GetSessionId())
+
+		// Es wird auf eintreffende Daten gewartet
+		data := make([]byte, 4096)
+		r, err := chann.Read(data)
+		if err != nil {
+			panic(err)
+		}
+
+		// Die Daten werden zurückgesendet
+		if i, _ := chann.Write(data[:r]); i != len(data[:r]) {
+			panic("rewrite failed")
+		}
+	}()
+
+	return nil
+}
+
+func server_rpc_test(_ *testing.T, upgrConn *BngConn) error {
+	// Es wird eine neue Funktion Registriert
+	err := upgrConn.RegisterFunction("test-function", func(req *BngRequest) error {
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func client_rpc_test(_ *testing.T, upgrConn *BngConn) error {
+	// Es wird eine neue Funktion Registriert
+	err := upgrConn.RegisterFunction("test-function", func(req *BngRequest) error {
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -51,7 +117,7 @@ func Server(t *testing.T, wg *sync.WaitGroup, swg *sync.WaitGroup) {
 	swg.Done()
 
 	// Warte auf eine Verbindung
-	fmt.Println("Auf neue Verbindung warten")
+	t.Log("Server: Auf neue Verbindung warten")
 	conn, err := listener.Accept()
 	if err != nil {
 		fmt.Println("Fehler beim Akzeptieren der Verbindung:", err)
@@ -60,6 +126,7 @@ func Server(t *testing.T, wg *sync.WaitGroup, swg *sync.WaitGroup) {
 	}
 
 	// Die Verbindung wird geupgradet
+	t.Log("Server: Verbindung upgraden")
 	upgrConn, err := UpgradeSocketToBngConn(conn)
 	if err != nil {
 		fmt.Println("Fehler beim Upgraden: " + err.Error())
@@ -67,45 +134,26 @@ func Server(t *testing.T, wg *sync.WaitGroup, swg *sync.WaitGroup) {
 		return
 	}
 
-	// Es wird ein neuer Channel bereitgestellt
-	testChannel, err := upgrConn.OpenChannelListener("test-channel")
-	if err != nil {
-		fmt.Println("Fehler beim Channel Listener", err)
+	// Der Channel Test wird durchgeführt
+	t.Log("Server: Channel testing")
+	if err := server_channel_test(t, upgrConn); err != nil {
+		fmt.Println(err)
 		wg.Done()
-		return
 	}
 
-	// Es wird eine Routine gestartet welche neue Anfrage auf dem Channel entgegen nimmt
-	go func() {
-		// Es wird auf neue Channel Joins gewartet
-		fmt.Println("Warte auf neue eingehende Channel anfrage")
-		chann, err := testChannel.Accept()
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println("Server:", chann.GetSessionId())
-		data := make([]byte, 4096)
-		r, err := chann.Read(data)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println(r, string(data[:r]))
-	}()
-
-	// Es wird eine neue Funktion Registriert
-	err = upgrConn.RegisterFunction("test-function", func(req *BngRequest) error {
-		return nil
-	})
-	if err != nil {
-		fmt.Println("Fehler beim Registrieren der Einfachen Testfunktion")
-		wg.Done()
-		return
+	// Die RPC Funktionen werden gestet
+	t.Log("Server: RPC testing")
+	if err := server_rpc_test(t, upgrConn); err != nil {
+		panic(err)
 	}
+
+	wg.Done()
 }
 
 // Tests die Clientseite
 func Client(t *testing.T, wg *sync.WaitGroup) {
 	// Es wird eine Verbindung mit dem Server hergestellt
+	t.Log("Client: Versuche neue Verbindung herzustellen")
 	conn, err := net.Dial("unix", SOCKET_PATH)
 	if err != nil {
 		fmt.Println("Fehler beim Verbinden zum Socket:", err)
@@ -115,16 +163,28 @@ func Client(t *testing.T, wg *sync.WaitGroup) {
 	defer conn.Close()
 
 	// Die Verbindung wird geupgradet und die Channel Tests werden durchgeführt
+	t.Log("Client: Verbindung upgraden")
 	upgrConn, err := UpgradeSocketToBngConn(conn)
 	if err != nil {
 		fmt.Println("Fehler beim Upgraden: " + err.Error())
 		wg.Done()
 		return
 	}
+
+	// Der Channel Test wird durchgeführt
+	t.Log("Client: Channel test")
 	if err := client_channel_test(t, upgrConn); err != nil {
 		fmt.Println(err)
 		wg.Done()
 	}
+
+	// Die RPC Funktionen werden gestet
+	t.Log("Client: RPC testing")
+	if err := client_rpc_test(t, upgrConn); err != nil {
+		panic(err)
+	}
+
+	wg.Done()
 }
 
 // TestAdd prüft die Additionsfunktion.

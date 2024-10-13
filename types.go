@@ -30,6 +30,7 @@ type _DataItem struct {
 // ByteCache speichert mehrere Datensätze und ermöglicht das sequenzielle Lesen dieser Daten.
 type _BngConnChannelByteCache struct {
 	dataItems []*_DataItem // Liste von Datensätzen, die im Cache gespeichert sind
+	closed    bool         // Gibt an ob das Objekt geschlossen wurde
 	currentID uint64       // ID für den nächsten hinzuzufügenden Datensatz
 	mu        sync.Mutex   // Mutex für die Synchronisation beim Zugriff auf die Daten
 	cond      *sync.Cond   // Bedingungsvariable, um auf das Vorhandensein von Daten zu warten
@@ -42,7 +43,7 @@ type BngConn struct {
 	conn                     net.Conn                                      // Socket-Verbindung des BNG
 	closed                   SafeBool                                      // Flag, das angibt, ob der Socket geschlossen wurde
 	closing                  SafeBool                                      // Flag, das angibt, ob der Socket geschlossen werden soll
-	runningError             error                                         // Speichert Fehler, die während des Betriebs auftreten
+	runningError             SafeValue[error]                              // Speichert Fehler, die während des Betriebs auftreten
 	writingChan              *SafeChan[*dataWritingResolver]               // Kanal für sendbare Daten
 	openRpcRequests          SafeMap[string, chan *RpcResponse]            // Speichert alle offenen RPC-Anfragen
 	functions                SafeMap[string, reflect.Value]                // Speichert die registrierten Funktionen
@@ -78,6 +79,9 @@ type BngConnChannel struct {
 	waitOfPackageACK    SafeBool                  // Flag, das angibt, ob auf ein ACK-Paket gewartet wird
 	currentReadingCache SafeBytes                 // Cache für Daten, die gerade gelesen werden
 	openReaders         SafeInt                   // Zähler für die Anzahl der aktuell offenen Leseoperationen
+	openWriters         SafeInt                   // Zähler für die Anzahl der aktuell offenen Schreiboperationen
 	bytesDataInCache    *_BngConnChannelByteCache // Cache für die eingehenden Daten
 	ackChan             SafeAck                   // Kanal für ACK-Rückmeldungen
+	channelRunningError SafeValue[error]          // Speichert Fehler ab, welche bei der Verwendung des Channels auftreten können
+	mu                  *sync.Mutex               // Objekt Mutex
 }

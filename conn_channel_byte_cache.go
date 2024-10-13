@@ -2,6 +2,7 @@ package bngsocket
 
 import (
 	"bytes"
+	"io"
 	"sync"
 )
 
@@ -9,15 +10,21 @@ func newBngConnChannelByteCache() *_BngConnChannelByteCache {
 	bc := &_BngConnChannelByteCache{
 		dataItems: []*_DataItem{},
 		currentID: 0,
+		closed:    false,
 	}
 	bc.cond = sync.NewCond(&bc.mu)
 	return bc
 }
 
 // Write schreibt Daten in den ByteCache.
-func (bc *_BngConnChannelByteCache) Write(data []byte, id uint64) {
+func (bc *_BngConnChannelByteCache) Write(data []byte, id uint64) error {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
+
+	// Es wird geprüft ob der ByteChannel geschlossen wurde
+	if bc.closed {
+		return io.EOF
+	}
 
 	// Erstellen eines neuen Datensatzes mit einer einzigartigen ID und Speichern der Daten.
 	item := &_DataItem{
@@ -32,12 +39,20 @@ func (bc *_BngConnChannelByteCache) Write(data []byte, id uint64) {
 
 	// Signalisiert, dass jetzt Daten verfügbar sind.
 	bc.cond.Signal()
+
+	// Der Vorgagng war erfolgreich
+	return nil
 }
 
 // ReadAll liest den gesamten aktuellen Datensatz und gibt die ID zurück.
 func (bc *_BngConnChannelByteCache) Read() ([]byte, uint64, error) {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
+
+	// Es wird geprüft ob der ByteChannel geschlossen wurde
+	if bc.closed {
+		return nil, 0, io.EOF
+	}
 
 	// Warten, bis Daten im Cache vorhanden sind.
 	for len(bc.dataItems) == 0 {
@@ -54,4 +69,19 @@ func (bc *_BngConnChannelByteCache) Read() ([]byte, uint64, error) {
 
 	// Rückgabe des gesamten Datensatzes und der ID.
 	return data, id, nil // Nach vollständigem Lesen wird io.EOF zurückgegeben.
+}
+
+// Gibt an ob das Objekt geschlossen wurde
+func (bc *_BngConnChannelByteCache) IsClosed() bool {
+	bc.mu.Lock()
+	v := bc.closed
+	bc.mu.Unlock()
+	return v
+}
+
+// Wird Verwendet um den Cache zu schließen
+func (bc *_BngConnChannelByteCache) Close() {
+	bc.mu.Lock()
+	bc.closed = true
+	bc.mu.Unlock()
 }
