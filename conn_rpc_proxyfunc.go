@@ -38,7 +38,7 @@ func proxyHiddenRpcFunction(s *BngConn, expectedType reflect.Type, hiddenFuncId 
 				}
 			} else {
 				if rpcReturn != nil {
-					v, err := processGoValueToRelectType(rpcReturn, outType, nil)
+					v, err := ProcessGoValueToRelectType(rpcReturn, outType, nil)
 					if err != nil {
 						fmt.Println(err)
 					}

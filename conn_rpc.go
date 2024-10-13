@@ -23,7 +23,7 @@ func (o *BngConn) processRpcRequest(rpcReq *RpcRequest) error {
 	ctx := &BngRequest{Conn: o}
 
 	// Es wird versucht die Akommenden Funktionsargumente in den Richtigen Datentypen zu unterteilen
-	in, err := convertRPCCallParameterBackToGoValues(o, fn, ctx, rpcReq.Params...)
+	in, err := ConvertRPCCallParameterBackToGoValues(o, fn, ctx, rpcReq.Params...)
 	if err != nil {
 		return fmt.Errorf("processRpcRequest[1]: " + err.Error())
 	}
@@ -75,7 +75,7 @@ func (o *BngConn) processRpcRequest(rpcReq *RpcRequest) error {
 	// Es wird geprüft ob die Rückgabewerte zulässig und korrekt sind
 
 	// Die Daten werden für den Transport vorbereitet
-	preparedValues, err := processRpcGoDataTypeTransportable(o, values...)
+	preparedValues, err := ProcessRpcGoDataTypeTransportable(o, values...)
 	if err != nil {
 		return fmt.Errorf("processRpcRequest: " + err.Error())
 	}

@@ -27,8 +27,8 @@ var supportedTypes = map[string]bool{
 	"mutexguard": true,
 }
 
-// isValidMessagePackType prüft, ob der gegebene Typ für MessagePack gültig ist
-func isValidMessagePackType(t reflect.Type) bool {
+// IsValidMessagePackType prüft, ob der gegebene Typ für MessagePack gültig ist
+func IsValidMessagePackType(t reflect.Type) bool {
 	switch t.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return true
@@ -42,10 +42,10 @@ func isValidMessagePackType(t reflect.Type) bool {
 		return true
 	case reflect.Slice:
 		// Prüfen, ob das Slice-Element ein gültiger Typ ist
-		return isValidMessagePackType(t.Elem())
+		return IsValidMessagePackType(t.Elem())
 	case reflect.Map:
 		// Prüfen, ob Schlüssel und Wert gültige Typen sind
-		return isValidMessagePackType(t.Key()) && isValidMessagePackType(t.Elem())
+		return IsValidMessagePackType(t.Key()) && IsValidMessagePackType(t.Elem())
 	case reflect.Struct:
 		return true
 	case reflect.Interface:
@@ -57,8 +57,8 @@ func isValidMessagePackType(t reflect.Type) bool {
 	}
 }
 
-// isErrorType prüft, ob der Typ ein error ist
-func isErrorType(t reflect.Type) bool {
+// IsErrorType prüft, ob der Typ ein error ist
+func IsErrorType(t reflect.Type) bool {
 	if t == nil {
 		return false
 	}
@@ -66,16 +66,16 @@ func isErrorType(t reflect.Type) bool {
 	return t == errorType
 }
 
-// validateStructFields prüft jedes Feld eines Structs auf MessagePack-Kompatibilität
-func validateStructFields(t reflect.Type) error {
+// ValidateStructFields prüft jedes Feld eines Structs auf MessagePack-Kompatibilität
+func ValidateStructFields(t reflect.Type) error {
 	// Es wird geprüft ob T NULL ist
 	if t == nil {
-		return fmt.Errorf("validateStructFields[0]: 't' is null, not allowed")
+		return fmt.Errorf("ValidateStructFields[0]: 't' is null, not allowed")
 	}
 
 	// Stellen Sie sicher, dass der Typ wirklich ein Struct ist
 	if t.Kind() != reflect.Struct {
-		return fmt.Errorf("validateStructFields[1]: expected struct but got %v", t.Kind())
+		return fmt.Errorf("ValidateStructFields[1]: expected struct but got %v", t.Kind())
 	}
 
 	// Iteriere über jedes Feld im Struct
@@ -90,13 +90,13 @@ func validateStructFields(t reflect.Type) error {
 
 		// Falls das Feld ein weiteres Struct ist, rekursiv dessen Felder validieren
 		if fieldType.Kind() == reflect.Struct {
-			if err := validateStructFields(fieldType); err != nil {
-				return fmt.Errorf("validateStructFields[1]: invalid type in field 1 %s: %w", field.Name, err)
+			if err := ValidateStructFields(fieldType); err != nil {
+				return fmt.Errorf("ValidateStructFields[1]: invalid type in field 1 %s: %w", field.Name, err)
 			}
 		} else {
 			// Für alle anderen Typen prüfen, ob es ein gültiger MessagePack-Typ ist
-			if !isValidMessagePackType(fieldType) {
-				return fmt.Errorf("validateStructFields[1]: Field %s has an invalid MessagePack type: %s", field.Name, fieldType)
+			if !IsValidMessagePackType(fieldType) {
+				return fmt.Errorf("ValidateStructFields[1]: Field %s has an invalid MessagePack type: %s", field.Name, fieldType)
 			}
 		}
 	}
@@ -105,15 +105,15 @@ func validateStructFields(t reflect.Type) error {
 }
 
 // Validiert eine RPC Funktion
-func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterSide bool) error {
+func ValidateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterSide bool) error {
 	// Es wird geprüft ob der Typ Parameter NULL ist
 	if fnType == nil {
-		return fmt.Errorf("validateRPCFunction[0]: 'fntype' is NULL, not allowed")
+		return fmt.Errorf("ValidateRPCFunction[0]: 'fntype' is NULL, not allowed")
 	}
 
 	// Prüfe, ob fn eine Funktion ist
 	if fnValue.Kind() != reflect.Func {
-		return fmt.Errorf("validateRPCFunction[1]: only functions allowed")
+		return fmt.Errorf("ValidateRPCFunction[1]: only functions allowed")
 	}
 
 	// Definiert die Standardwerte
@@ -123,7 +123,7 @@ func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 	if isRegisterSide {
 		// Es wird geprüft ob mindestens 1 Parameter vorhaden ist
 		if fnType.NumIn() < 1 {
-			return fmt.Errorf("validateRPCFunction[3]: function require one parameter")
+			return fmt.Errorf("ValidateRPCFunction[3]: function require one parameter")
 		}
 
 		// Die Startposition wird festgelegt
@@ -134,7 +134,7 @@ func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 
 		// Es wird geprüft, ob die Funktion überhaupt mindestens einen Parameter hat
 		if fnType.NumIn() == 0 {
-			return fmt.Errorf("validateRPCFunction[4]: the function has no parameters")
+			return fmt.Errorf("ValidateRPCFunction[4]: the function has no parameters")
 		}
 
 		// Der Typ des ersten Parameters wird abgerufen
@@ -142,7 +142,7 @@ func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 
 		// Es wird geprüft, ob der erste Parameter ein Pointer auf den zugrunde liegenden Typ des contextType ist
 		if !(firstParam.Kind() == reflect.Ptr && firstParam.Elem().ConvertibleTo(contextType)) {
-			return fmt.Errorf("validateRPCFunction[4]: the first parameter of function isn't compatible with *Request")
+			return fmt.Errorf("ValidateRPCFunction[4]: the first parameter of function isn't compatible with *Request")
 		}
 	} else {
 		// Die Startposition wird festgelegt
@@ -157,41 +157,41 @@ func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 		if param.Kind() == reflect.Ptr {
 			// Prüfen, ob der zugrunde liegende Typ ein zulässiger MessagePack-Typ ist
 			if param.Elem().Kind() != reflect.Struct {
-				return fmt.Errorf("validateRPCFunction[5]: parameter %d is a pointer to an unsupported type: %s", i, param.Elem().Kind())
+				return fmt.Errorf("ValidateRPCFunction[5]: parameter %d is a pointer to an unsupported type: %s", i, param.Elem().Kind())
 			}
 
 			// Der Struct-Typ ist nur als Pointer zulässig, daher ist dies erlaubt
-			if err := validateStructFields(param.Elem()); err != nil {
-				return fmt.Errorf("validateRPCFunction[6]: parameter %d is a pointer to a struct with unsupported fields: %w", i, err)
+			if err := ValidateStructFields(param.Elem()); err != nil {
+				return fmt.Errorf("ValidateRPCFunction[6]: parameter %d is a pointer to a struct with unsupported fields: %w", i, err)
 			}
 		} else if param.Kind() == reflect.Func {
 			// Wenn das Feld eine Funktion ist, validiere die RPC-Funktion
 			fieldValue := reflect.New(param).Elem() // Dummy-Wert für die Funktion erzeugen
-			if err := validateRPCFunction(fieldValue, param, !isRegisterSide); err != nil {
-				return fmt.Errorf("validateRPCFunction[7]: Invalid RPC function in field %d: %s", i, err.Error())
+			if err := ValidateRPCFunction(fieldValue, param, !isRegisterSide); err != nil {
+				return fmt.Errorf("ValidateRPCFunction[7]: Invalid RPC function in field %d: %s", i, err.Error())
 			}
 		} else {
 			// Prüfen, ob es sich um einen Struct handelt (und dieser kein Pointer ist)
 			if param.Kind() == reflect.Struct {
-				return fmt.Errorf("validateRPCFunction[8]: parameter %d is a struct and must be passed as a pointer", i)
+				return fmt.Errorf("ValidateRPCFunction[8]: parameter %d is a struct and must be passed as a pointer", i)
 			}
 
 			// Wenn es kein Pointer und kein Struct ist, prüfen wir direkt auf MessagePack-Kompatibilität
-			if !isValidMessagePackType(param) {
-				return fmt.Errorf("validateRPCFunction[9]: parameter %d has an unsupported type: %s", i, param.Kind())
+			if !IsValidMessagePackType(param) {
+				return fmt.Errorf("ValidateRPCFunction[9]: parameter %d has an unsupported type: %s", i, param.Kind())
 			}
 		}
 	}
 
 	// Es wird geprüft ob Mindestens 1 Rückgabewert vorhanden ist
 	if fnType.NumOut() < 1 {
-		return fmt.Errorf("validateRPCFunction[10]: At least 1 return value is required")
+		return fmt.Errorf("ValidateRPCFunction[10]: At least 1 return value is required")
 	}
 
 	// Es wird geprüft ob der Letze Eintrag ein Fehler ist
 	lastItem := fnType.Out(fnType.NumOut() - 1)
-	if !isErrorType(lastItem) {
-		return fmt.Errorf("validateRPCFunction[11]: if the function only has one return value, it must be of type error")
+	if !IsErrorType(lastItem) {
+		return fmt.Errorf("ValidateRPCFunction[11]: if the function only has one return value, it must be of type error")
 	}
 
 	// Es werden alle Rückgabewerte Abgearbeitet, bis auf den letzten
@@ -204,12 +204,12 @@ func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 			}
 
 			// Wenn es ein Struct ist, rekursiv alle Felder prüfen
-			if err := validateStructFields(outType); err != nil {
+			if err := ValidateStructFields(outType); err != nil {
 				return fmt.Errorf("der erste Rückgabewert enthält ungültige MessagePack-Typen: %w", err)
 			}
 		} else {
 			// Prüfen, ob der Typ ein Struct ist
-			if !isValidMessagePackType(outType) {
+			if !IsValidMessagePackType(outType) {
 				return fmt.Errorf("der erste Rückgabewert muss ein zulässiger MessagePack-Typ sein")
 			}
 		}
@@ -220,7 +220,7 @@ func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 }
 
 // Überprüft ob die Datentypen Zulässig sind um in einer RPC Funktion verwendet werden zu können
-func validateDatatypeForRpc(param reflect.Type, isRegisterSide bool) error {
+func ValidateDatatypeForRpc(param reflect.Type, isRegisterSide bool) error {
 	// Wenn der Parameter ein Pointer ist
 	if param.Kind() == reflect.Ptr {
 		// Prüfen, ob der zugrunde liegende Typ ein zulässiger MessagePack-Typ ist
@@ -229,13 +229,13 @@ func validateDatatypeForRpc(param reflect.Type, isRegisterSide bool) error {
 		}
 
 		// Der Struct-Typ ist nur als Pointer zulässig, daher ist dies erlaubt
-		if err := validateStructFields(param.Elem()); err != nil {
+		if err := ValidateStructFields(param.Elem()); err != nil {
 			return fmt.Errorf("is a pointer to a struct with unsupported fields: %w", err)
 		}
 	} else if param.Kind() == reflect.Func {
 		// Wenn das Feld eine Funktion ist, validiere die RPC-Funktion
 		fieldValue := reflect.New(param).Elem() // Dummy-Wert für die Funktion erzeugen
-		if err := validateRPCFunction(fieldValue, param, !isRegisterSide); err != nil {
+		if err := ValidateRPCFunction(fieldValue, param, !isRegisterSide); err != nil {
 			return fmt.Errorf("invalid RPC function  %s", err.Error())
 		}
 	} else {
@@ -245,7 +245,7 @@ func validateDatatypeForRpc(param reflect.Type, isRegisterSide bool) error {
 		}
 
 		// Wenn es kein Pointer und kein Struct ist, prüfen wir direkt auf MessagePack-Kompatibilität
-		if !isValidMessagePackType(param) {
+		if !IsValidMessagePackType(param) {
 			return fmt.Errorf("has an unsupported type: %s", param.Kind())
 		}
 	}
@@ -253,9 +253,9 @@ func validateDatatypeForRpc(param reflect.Type, isRegisterSide bool) error {
 }
 
 // Wird verwendet um zu überprüfen ob die Verwendeten Parameter für einen RPC Funktionsaufruf unterstützt werden
-func validateRpcParamsDatatypes(isRegisterSide bool, params ...interface{}) error {
+func ValidateRpcParamsDatatypes(isRegisterSide bool, params ...interface{}) error {
 	for i, item := range params {
-		if err := validateDatatypeForRpc(reflect.TypeOf(item), isRegisterSide); err != nil {
+		if err := ValidateDatatypeForRpc(reflect.TypeOf(item), isRegisterSide); err != nil {
 			return fmt.Errorf("%d - %s", i, err.Error())
 		}
 	}
@@ -263,7 +263,7 @@ func validateRpcParamsDatatypes(isRegisterSide bool, params ...interface{}) erro
 }
 
 // Konvertiert die Parameter eines Funktionsaufrufes
-func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) ([]*RpcDataCapsle, error) {
+func ProcessRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) ([]*RpcDataCapsle, error) {
 	newItems := make([]*RpcDataCapsle, 0)
 	for i, item := range params {
 		// Refelction wird auf 'fn' angewendet
@@ -327,7 +327,7 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 }
 
 // Wandelt Daten mittels Angabe eines Refelect Types um
-func processGoValueToRelectType(value any, expectedType reflect.Type, socket *BngConn) (reflect.Value, error) {
+func ProcessGoValueToRelectType(value any, expectedType reflect.Type, socket *BngConn) (reflect.Value, error) {
 	val := reflect.ValueOf(value)
 	switch expectedType.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -421,35 +421,35 @@ func processGoValueToRelectType(value any, expectedType reflect.Type, socket *Bn
 }
 
 // Wandelt RpcDataCapsle zurück in Go Datensätze
-func processRpcDataCapsleToGoValue(value *RpcDataCapsle, expectedType reflect.Type, socket *BngConn) (reflect.Value, error) {
+func ProcessRpcDataCapsleToGoValue(value *RpcDataCapsle, expectedType reflect.Type, socket *BngConn) (reflect.Value, error) {
 	switch expectedType.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return processGoValueToRelectType(value.Value, expectedType, socket)
+		return ProcessGoValueToRelectType(value.Value, expectedType, socket)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return processGoValueToRelectType(value.Value, expectedType, socket)
+		return ProcessGoValueToRelectType(value.Value, expectedType, socket)
 	case reflect.Float32, reflect.Float64:
-		return processGoValueToRelectType(value.Value, expectedType, socket)
+		return ProcessGoValueToRelectType(value.Value, expectedType, socket)
 	case reflect.Bool:
-		return processGoValueToRelectType(value.Value, expectedType, socket)
+		return ProcessGoValueToRelectType(value.Value, expectedType, socket)
 	case reflect.String:
-		return processGoValueToRelectType(value.Value, expectedType, socket)
+		return ProcessGoValueToRelectType(value.Value, expectedType, socket)
 	case reflect.Slice:
-		return processGoValueToRelectType(value.Value, expectedType, socket)
+		return ProcessGoValueToRelectType(value.Value, expectedType, socket)
 	case reflect.Map:
-		return processGoValueToRelectType(value.Value, expectedType, socket)
+		return ProcessGoValueToRelectType(value.Value, expectedType, socket)
 	case reflect.Ptr:
-		return processGoValueToRelectType(value.Value, expectedType, socket)
+		return ProcessGoValueToRelectType(value.Value, expectedType, socket)
 	case reflect.Func:
-		return processGoValueToRelectType(value.Value, expectedType, socket)
+		return ProcessGoValueToRelectType(value.Value, expectedType, socket)
 	case reflect.Struct:
-		return processGoValueToRelectType(value.Value, expectedType, socket)
+		return ProcessGoValueToRelectType(value.Value, expectedType, socket)
 	default:
 		return reflect.Value{}, fmt.Errorf("processValueToGoInterface: unsupoorted datatype")
 	}
 }
 
 // Konvertiert übertragene Parameter wirder zurück in Go Werte um
-func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ctx *BngRequest, params ...*RpcDataCapsle) ([]reflect.Value, error) {
+func ConvertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ctx *BngRequest, params ...*RpcDataCapsle) ([]reflect.Value, error) {
 	// Parametertypen prüfen und aufbereiten
 	in := make([]reflect.Value, len(params)+1)
 	in[0] = reflect.ValueOf(ctx)
@@ -470,9 +470,9 @@ func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ct
 		}
 
 		// Der Wert wird eingelesen
-		cvalue, err := processRpcDataCapsleToGoValue(param, expectedType, socket)
+		cvalue, err := ProcessRpcDataCapsleToGoValue(param, expectedType, socket)
 		if err != nil {
-			return nil, fmt.Errorf("convertRPCCallParameterBackToGoValues: " + err.Error())
+			return nil, fmt.Errorf("ConvertRPCCallParameterBackToGoValues: " + err.Error())
 		}
 
 		// Wid zwischengespeichert
@@ -484,7 +484,7 @@ func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ct
 }
 
 // Wird verwendet um die Rückgabe Daten eines Aufrufes wieder in Go Datentypen zu Konvertieren
-func processRPCCallResponseDataToGoDatatype(rdc *RpcDataCapsle, retunDataType reflect.Type) (interface{}, error) {
+func ProcessRPCCallResponseDataToGoDatatype(rdc *RpcDataCapsle, retunDataType reflect.Type) (interface{}, error) {
 	// Es wird ermnittelt um was für einen Typen es sich handelt
 	val := reflect.ValueOf(rdc.Value)
 	valType := val.Type()
@@ -554,8 +554,8 @@ func processRPCCallResponseDataToGoDatatype(rdc *RpcDataCapsle, retunDataType re
 	return rdc.Value, nil
 }
 
-// splitDataIntoChunks teilt die Daten in Chunks der angegebenen Größe auf
-func splitDataIntoChunks(data []byte, chunkSize int) [][]byte {
+// SplitDataIntoChunks teilt die Daten in Chunks der angegebenen Größe auf
+func SplitDataIntoChunks(data []byte, chunkSize int) [][]byte {
 	var chunks [][]byte
 	cSize := chunkSize - 3
 	for len(data) > 0 {
@@ -569,7 +569,7 @@ func splitDataIntoChunks(data []byte, chunkSize int) [][]byte {
 }
 
 // Wird verwenet um beim Lessevorgang auf Fehler zu Reagieren
-func readProcessErrorHandling(socket *BngConn, err error) {
+func ReadProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
 		// Die Verbindung wurde getrennt (EOF)
@@ -591,7 +591,7 @@ func readProcessErrorHandling(socket *BngConn, err error) {
 }
 
 // Wird verwenet um beim Lessevorgang auf Fehler zu Reagieren
-func writeProcessErrorHandling(socket *BngConn, err error) {
+func WriteProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
 		// Die Verbindung wurde getrennt (EOF)
@@ -613,12 +613,12 @@ func writeProcessErrorHandling(socket *BngConn, err error) {
 }
 
 // Gibt an ob die Hintergrund Dauerschleifen eines Sockets aktiv sein sollen
-func runningBackgroundServingLoop(ipcc *BngConn) bool {
-	return !connectionIsClosed(ipcc)
+func RunningBackgroundServingLoop(ipcc *BngConn) bool {
+	return !ConnectionIsClosed(ipcc)
 }
 
 // Gibt an ob eine Verbinding geschlossen wurde
-func connectionIsClosed(ipcc *BngConn) bool {
+func ConnectionIsClosed(ipcc *BngConn) bool {
 	// Der Mutex wird angewendet
 	ipcc.mu.Lock()
 	defer ipcc.mu.Unlock()

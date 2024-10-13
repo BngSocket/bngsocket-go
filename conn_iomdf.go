@@ -364,7 +364,7 @@ func (s *BngConn) _RegisterFunction(hidden bool, nameorid string, fn interface{}
 	// Die RPC Funktion wird validiert
 	fnValue := reflect.ValueOf(fn)
 	fnType := fnValue.Type()
-	if err := validateRPCFunction(fnValue, fnType, true); err != nil {
+	if err := ValidateRPCFunction(fnValue, fnType, true); err != nil {
 		return fmt.Errorf("bngsocket->_RegisterFunction[0]: " + err.Error())
 	}
 
@@ -399,12 +399,12 @@ func (s *BngConn) _RegisterFunction(hidden bool, nameorid string, fn interface{}
 // Ruft eine Funktion auf der Gegenseite auf
 func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
 	// Es wird geprüft ob die Verwendeten Parameter Zulässigen Datentypen sind
-	if err := validateRpcParamsDatatypes(false, params...); err != nil {
+	if err := ValidateRpcParamsDatatypes(false, params...); err != nil {
 		return nil, err
 	}
 
 	// Die Parameter werden umgewandelt
-	convertedParams, err := processRpcGoDataTypeTransportable(s, params...)
+	convertedParams, err := ProcessRpcGoDataTypeTransportable(s, params...)
 	if err != nil {
 		return nil, fmt.Errorf("bngsocket->_CallFunction[0]: " + err.Error())
 	}
@@ -468,7 +468,7 @@ func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []inter
 		// Es werden alle Einträge abgearbeitet
 		returnValues := make([]interface{}, 0)
 		for i := range response.Return {
-			value, err := processRPCCallResponseDataToGoDatatype(response.Return[i], returnDataType[i])
+			value, err := ProcessRPCCallResponseDataToGoDatatype(response.Return[i], returnDataType[i])
 			if err != nil {
 				return nil, fmt.Errorf("bngsocket->_CallFunction[3]: " + err.Error())
 			}

@@ -23,13 +23,13 @@ func constantReading(o *BngConn) {
 	DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was started", o._innerhid))
 
 	// Diese Schleife wird Permanent ausgeführt und liest alle Daten ein
-	for runningBackgroundServingLoop(o) {
+	for RunningBackgroundServingLoop(o) {
 		// Verfügbare Daten aus der Verbindung lesen
 		rBytes := make([]byte, 4096)
 		sizeN, err := reader.Read(rBytes)
 		if err != nil {
 			// Der Fehler wird ausgewertet
-			readProcessErrorHandling(o, err)
+			ReadProcessErrorHandling(o, err)
 			return
 		}
 
@@ -60,7 +60,7 @@ func constantReading(o *BngConn) {
 				const MaxChunkSize = 4096 // Maximal erlaubte Chunk-Größe in Bytes
 				if length > MaxChunkSize {
 					// Der Fehler wird ausgewertet
-					readProcessErrorHandling(o, fmt.Errorf("chunk too large: %d bytes", length))
+					ReadProcessErrorHandling(o, fmt.Errorf("chunk too large: %d bytes", length))
 					break
 				}
 
@@ -99,7 +99,7 @@ func constantReading(o *BngConn) {
 				}(transportBytes)
 			} else {
 				// Der Fehler wird ausgewertet
-				readProcessErrorHandling(o, fmt.Errorf("unknown message type: %v", cacheBytes[0]))
+				ReadProcessErrorHandling(o, fmt.Errorf("unknown message type: %v", cacheBytes[0]))
 				return
 			}
 		}
@@ -121,12 +121,12 @@ func constantWriting(o *BngConn) {
 	DebugPrint(fmt.Sprintf("BngConn(%s): Constant writing to Socket was started", o._innerhid))
 
 	// Die Schleife empfängt die Daten
-	for runningBackgroundServingLoop(o) {
+	for RunningBackgroundServingLoop(o) {
 		// Es wird auf neue Daten aus dem Chan gewartet
 		data, ok := o.writingChan.Read()
 		if !ok {
 			// Es wird geprüft ob die Verbindung getrennt wurde
-			if connectionIsClosed(o) {
+			if ConnectionIsClosed(o) {
 				break
 			}
 
@@ -138,13 +138,13 @@ func constantWriting(o *BngConn) {
 		}
 
 		// Daten in Chunks aufteilen
-		chunks := splitDataIntoChunks(data.data, 4096)
+		chunks := SplitDataIntoChunks(data.data, 4096)
 
 		// Die Chunks werden übertragen
 		writedBytes := uint64(0)
 		for _, chunk := range chunks {
 			// Es wird geprüft ob die Verbindung getrennt wurde
-			if connectionIsClosed(o) {
+			if ConnectionIsClosed(o) {
 				// Der Fehler wird verarbeitet
 				o._ConsensusConnectionClosedSignal()
 				break
@@ -154,7 +154,7 @@ func constantWriting(o *BngConn) {
 			err := writer.WriteByte('C')
 			if err != nil {
 				// Der Fehler wird verarbeitet
-				writeProcessErrorHandling(o, err)
+				WriteProcessErrorHandling(o, err)
 				break
 			}
 			writedBytes = writedBytes + 1
@@ -166,7 +166,7 @@ func constantWriting(o *BngConn) {
 			_, err = writer.Write(lengthBytes)
 			if err != nil {
 				// Der Fehler wird verarbeitet
-				writeProcessErrorHandling(o, err)
+				WriteProcessErrorHandling(o, err)
 				break
 			}
 			writedBytes = writedBytes + uint64(len(chunk))
@@ -175,7 +175,7 @@ func constantWriting(o *BngConn) {
 			_, err = writer.Write(chunk)
 			if err != nil {
 				// Der Fehler wird verarbeitet
-				writeProcessErrorHandling(o, err)
+				WriteProcessErrorHandling(o, err)
 				break
 			}
 
@@ -183,13 +183,13 @@ func constantWriting(o *BngConn) {
 			err = writer.Flush()
 			if err != nil {
 				// Der Fehler wird verarbeitet
-				writeProcessErrorHandling(o, err)
+				WriteProcessErrorHandling(o, err)
 				break
 			}
 		}
 
 		// Es wird geprüft ob die Verbindung getrennt wurde
-		if connectionIsClosed(o) {
+		if ConnectionIsClosed(o) {
 			// Der Fehler wird verarbeitet
 			o._ConsensusConnectionClosedSignal()
 			break
@@ -199,7 +199,7 @@ func constantWriting(o *BngConn) {
 		err := writer.WriteByte('L')
 		if err != nil {
 			// Der Fehler wird verarbeitet
-			writeProcessErrorHandling(o, err)
+			WriteProcessErrorHandling(o, err)
 			break
 		}
 		writedBytes = writedBytes + 1
@@ -208,7 +208,7 @@ func constantWriting(o *BngConn) {
 		err = writer.Flush()
 		if err != nil {
 			// Der Fehler wird verarbeitet
-			writeProcessErrorHandling(o, err)
+			WriteProcessErrorHandling(o, err)
 			break
 		}
 
