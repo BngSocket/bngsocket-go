@@ -3,11 +3,14 @@ package bngsocket
 import (
 	"reflect"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 func _NewBaseBngSocketObject() *BngConn {
 	// Das BngConn Objekt wird erzeugt
 	return &BngConn{
+		_innerhid:                uuid.NewString(),
 		bp:                       &sync.WaitGroup{},
 		mu:                       &sync.Mutex{},
 		closed:                   newSafeBool(false),

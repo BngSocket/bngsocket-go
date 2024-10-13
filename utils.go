@@ -219,6 +219,49 @@ func validateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 	return nil
 }
 
+// Überprüft ob die Datentypen Zulässig sind um in einer RPC Funktion verwendet werden zu können
+func validateDatatypeForRpc(param reflect.Type, isRegisterSide bool) error {
+	// Wenn der Parameter ein Pointer ist
+	if param.Kind() == reflect.Ptr {
+		// Prüfen, ob der zugrunde liegende Typ ein zulässiger MessagePack-Typ ist
+		if param.Elem().Kind() != reflect.Struct {
+			return fmt.Errorf("is a pointer to an unsupported type: %s", param.Elem().Kind())
+		}
+
+		// Der Struct-Typ ist nur als Pointer zulässig, daher ist dies erlaubt
+		if err := validateStructFields(param.Elem()); err != nil {
+			return fmt.Errorf("is a pointer to a struct with unsupported fields: %w", err)
+		}
+	} else if param.Kind() == reflect.Func {
+		// Wenn das Feld eine Funktion ist, validiere die RPC-Funktion
+		fieldValue := reflect.New(param).Elem() // Dummy-Wert für die Funktion erzeugen
+		if err := validateRPCFunction(fieldValue, param, !isRegisterSide); err != nil {
+			return fmt.Errorf("invalid RPC function  %s", err.Error())
+		}
+	} else {
+		// Prüfen, ob es sich um einen Struct handelt (und dieser kein Pointer ist)
+		if param.Kind() == reflect.Struct {
+			return fmt.Errorf("is a struct and must be passed as a pointer")
+		}
+
+		// Wenn es kein Pointer und kein Struct ist, prüfen wir direkt auf MessagePack-Kompatibilität
+		if !isValidMessagePackType(param) {
+			return fmt.Errorf("has an unsupported type: %s", param.Kind())
+		}
+	}
+	return nil
+}
+
+// Wird verwendet um zu überprüfen ob die Verwendeten Parameter für einen RPC Funktionsaufruf unterstützt werden
+func validateRpcParamsDatatypes(isRegisterSide bool, params ...interface{}) error {
+	for i, item := range params {
+		if err := validateDatatypeForRpc(reflect.TypeOf(item), isRegisterSide); err != nil {
+			return fmt.Errorf("%d - %s", i, err.Error())
+		}
+	}
+	return nil
+}
+
 // Konvertiert die Parameter eines Funktionsaufrufes
 func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) ([]*RpcDataCapsle, error) {
 	newItems := make([]*RpcDataCapsle, 0)
@@ -226,6 +269,7 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 		// Refelction wird auf 'fn' angewendet
 		fnValue := reflect.ValueOf(item)
 		fnType := fnValue.Type()
+
 		// Der Datentyp wird extrahiert
 		switch fnType.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -258,7 +302,7 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 		case reflect.Func:
 			// Es wird versucht die Funktion als Hidden Funktion zu Registrieren
 			id := uuid.New().String()
-			if err := socket._RegisterFunctionRoot(true, id, item); err != nil {
+			if err := socket._RegisterFunction(true, id, item); err != nil {
 				return nil, fmt.Errorf("bngsocket->RegisterFunction: " + err.Error())
 			}
 
@@ -522,55 +566,6 @@ func splitDataIntoChunks(data []byte, chunkSize int) [][]byte {
 		data = data[cSize:]
 	}
 	return chunks
-}
-
-// Wid als Proxy Funktion verwendet
-func proxyHiddenRpcFunction(s *BngConn, expectedType reflect.Type, hiddenFuncId string) reflect.Value {
-	return reflect.MakeFunc(expectedType, func(args []reflect.Value) (results []reflect.Value) {
-		// Anzahl der erwarteten Rückgabewerte ermitteln
-		numOut := expectedType.NumOut()
-		results = make([]reflect.Value, numOut)
-
-		// Die Parameter werden umgewandelt
-		params := make([]interface{}, 0)
-		for _, item := range args {
-			params = append(params, item.Interface())
-		}
-
-		// Die Rückgabewerte der Funktionen werden getestet
-		reflectTypes := make([]reflect.Type, 0)
-		for i := range expectedType.NumOut() {
-			reflectTypes = append(reflectTypes, expectedType.Out(i))
-		}
-
-		// Fügt eine neue Funktion hinzu
-		rpcReturn, callError := s._CallFunctionRoot(true, hiddenFuncId, params, reflectTypes)
-
-		// Rückgabewerte initialisieren
-		for i := 0; i < numOut; i++ {
-			outType := expectedType.Out(i)
-			if outType == reflect.TypeOf((*error)(nil)).Elem() {
-				if callError == nil {
-					results[i] = reflect.Zero(outType)
-				} else {
-					results[i] = reflect.ValueOf(rpcReturn)
-				}
-			} else {
-				if rpcReturn != nil {
-					v, err := processGoValueToRelectType(rpcReturn, outType, nil)
-					if err != nil {
-						fmt.Println(err)
-					}
-					results[i] = reflect.ValueOf(v.Interface())
-				} else {
-					results[i] = reflect.Zero(outType)
-				}
-			}
-		}
-
-		// Das Ergebniss wird zurückgegeben
-		return results
-	})
 }
 
 // Wird verwenet um beim Lessevorgang auf Fehler zu Reagieren

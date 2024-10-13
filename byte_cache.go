@@ -6,8 +6,8 @@ import (
 	"sync"
 )
 
-func newBngConnChannelByteCache() *_BngConnChannelByteCache {
-	bc := &_BngConnChannelByteCache{
+func newBngConnChannelByteCache() *ByteCache {
+	bc := &ByteCache{
 		dataItems: []*_DataItem{},
 		currentID: 0,
 		closed:    false,
@@ -17,7 +17,7 @@ func newBngConnChannelByteCache() *_BngConnChannelByteCache {
 }
 
 // Write schreibt Daten in den ByteCache.
-func (bc *_BngConnChannelByteCache) Write(data []byte, id uint64) error {
+func (bc *ByteCache) Write(data []byte, id uint64) error {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
 
@@ -45,7 +45,7 @@ func (bc *_BngConnChannelByteCache) Write(data []byte, id uint64) error {
 }
 
 // ReadAll liest den gesamten aktuellen Datensatz und gibt die ID zurück.
-func (bc *_BngConnChannelByteCache) Read() ([]byte, uint64, error) {
+func (bc *ByteCache) Read() ([]byte, uint64, error) {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
 
@@ -72,7 +72,7 @@ func (bc *_BngConnChannelByteCache) Read() ([]byte, uint64, error) {
 }
 
 // Gibt an ob das Objekt geschlossen wurde
-func (bc *_BngConnChannelByteCache) IsClosed() bool {
+func (bc *ByteCache) IsClosed() bool {
 	bc.mu.Lock()
 	v := bc.closed
 	bc.mu.Unlock()
@@ -80,7 +80,7 @@ func (bc *_BngConnChannelByteCache) IsClosed() bool {
 }
 
 // Wird Verwendet um den Cache zu schließen
-func (bc *_BngConnChannelByteCache) Close() {
+func (bc *ByteCache) Close() {
 	bc.mu.Lock()
 	bc.closed = true
 	bc.mu.Unlock()

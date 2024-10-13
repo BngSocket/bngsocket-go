@@ -29,6 +29,9 @@ func UpgradeSocketToBngConn(socket net.Conn) (*BngConn, error) {
 	// Die Anzahl der Routinen wird übermittelt
 	client.bp.Add(2)
 
+	// Debug
+	DebugPrint(fmt.Sprintf("Connection upraged to BngConn = %s", client._innerhid))
+
 	// Es wird eine Routine gestartet welche für das Senden der Ausgehenden Daten ist
 	go constantWriting(client)
 

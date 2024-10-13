@@ -11,10 +11,16 @@ func constantReading(o *BngConn) {
 	// Wenn die Funktion am ende ist wird Signalisiert dass sie zuennde ist
 	defer o.bp.Done()
 
+	// Debug am ende
+	defer DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was stopped", o._innerhid))
+
 	// Der Buffer Reader ließt die Daten und speichert sie dann im Cache
 	reader := bufio.NewReader(o.conn)
 	cacheBytes := make([]byte, 0)
 	cachedData := make([]byte, 0)
+
+	// Debug
+	DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was started", o._innerhid))
 
 	// Diese Schleife wird Permanent ausgeführt und liest alle Daten ein
 	for runningBackgroundServingLoop(o) {
@@ -31,6 +37,7 @@ func constantReading(o *BngConn) {
 		cacheBytes = append(cacheBytes, rBytes[:sizeN]...)
 
 		// Verarbeitung des Empfangspuffers
+		ics := 0
 		for {
 			// Es wird geprüft ob Mindestens 1 Byte im Cache ist
 			if len(cacheBytes) < 1 {
@@ -39,6 +46,8 @@ func constantReading(o *BngConn) {
 
 			// Der Datentyp wird ermittelt
 			if cacheBytes[0] == byte('C') {
+				ics = ics + 1
+
 				// Prüfen, ob genügend Daten für die Chunk-Länge vorhanden sind
 				if len(cacheBytes) < 3 { // 1 Byte für 'C' und 2 Bytes für die Länge
 					break // Warten auf mehr Daten
@@ -72,12 +81,16 @@ func constantReading(o *BngConn) {
 			} else if cacheBytes[0] == byte('L') {
 				// 'L' aus dem Cache entfernen
 				cacheBytes = cacheBytes[1:]
+				ics = ics + 1
 
 				// Gesammelte Daten verarbeiten
 				transportBytes := make([]byte, len(cachedData))
 				copy(transportBytes, cachedData)
 				cachedData = make([]byte, 0)
 				o.bp.Add(1)
+
+				// Debug
+				DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes was recived", o._innerhid, len(transportBytes)+ics))
 
 				// Die Daten werden durch die GoRoutine verarbeitet
 				go func(data []byte) {
@@ -98,8 +111,14 @@ func constantWriting(o *BngConn) {
 	// Wird am ende der Lesefunktion aufgerufen
 	defer o.bp.Done()
 
+	// Debug am ende
+	defer DebugPrint(fmt.Sprintf("BngConn(%s): Constant writing to Socket was stopped", o._innerhid))
+
 	// Der Writer wird erstellt
 	writer := bufio.NewWriter(o.conn)
+
+	// Debug
+	DebugPrint(fmt.Sprintf("BngConn(%s): Constant writing to Socket was started", o._innerhid))
 
 	// Die Schleife empfängt die Daten
 	for runningBackgroundServingLoop(o) {
@@ -192,6 +211,9 @@ func constantWriting(o *BngConn) {
 			writeProcessErrorHandling(o, err)
 			break
 		}
+
+		// Debug
+		DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes writed", o._innerhid, writedBytes))
 
 		// Es wird Signalisiert dass die Übertragung erfolgreich war
 		data.waitOfResolve <- &writingState{n: int(int(writedBytes) - 1 - len(chunks)), err: nil}

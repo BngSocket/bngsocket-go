@@ -5,5 +5,5 @@ package bngsocket
 func DebugPrint(values ...interface{}) {
 }
 
-func SetPrintFunction(v func(v ...any)) {
+func DebugSetPrintFunction(v func(v ...any)) {
 }

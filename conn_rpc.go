@@ -71,6 +71,10 @@ func (o *BngConn) processRpcRequest(rpcReq *RpcRequest) error {
 	for i := range len(results) - 1 {
 		values = append(values, results[i].Interface())
 	}
+
+	// Es wird geprüft ob die Rückgabewerte zulässig und korrekt sind
+
+	// Die Daten werden für den Transport vorbereitet
 	preparedValues, err := processRpcGoDataTypeTransportable(o, values...)
 	if err != nil {
 		return fmt.Errorf("processRpcRequest: " + err.Error())

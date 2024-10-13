@@ -46,7 +46,7 @@ func (s *BngConn) JoinChannel(channelId string) (*BngConnChannel, error) {
 	// Das Paket wird in Bytes umgewandelt
 	bytedData, err := msgpack.Marshal(chreq)
 	if err != nil {
-		return nil, fmt.Errorf("bngsocket->_CallFunctionRoot[1]: " + err.Error())
+		return nil, fmt.Errorf("bngsocket->_CallFunction[1]: " + err.Error())
 	}
 
 	// Der Antwort Chan wird erzeugt
@@ -87,7 +87,7 @@ func (s *BngConn) JoinChannel(channelId string) (*BngConnChannel, error) {
 // RegisterFunction ermöglicht es, neue Funktionen dynamisch hinzuzufügen
 func (s *BngConn) RegisterFunction(name string, fn interface{}) error {
 	// Fügt eine neue Funktion hinzu
-	if err := s._RegisterFunctionRoot(false, name, fn); err != nil {
+	if err := s._RegisterFunction(false, name, fn); err != nil {
 		return fmt.Errorf("bngsocket->RegisterFunction[0]: " + err.Error())
 	}
 
@@ -98,7 +98,7 @@ func (s *BngConn) RegisterFunction(name string, fn interface{}) error {
 // CallFunction ruft eine Funktion auf der Gegenseite auf
 func (s *BngConn) CallFunction(name string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
 	// Die Funktion auf der Gegenseite wird aufgerufen
-	data, err := s._CallFunctionRoot(false, name, params, returnDataType)
+	data, err := s._CallFunction(false, name, params, returnDataType)
 	if err != nil {
 		return nil, fmt.Errorf("bngsocket->CallFunction[0]: " + err.Error())
 	}

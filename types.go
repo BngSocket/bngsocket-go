@@ -28,7 +28,7 @@ type _DataItem struct {
 }
 
 // ByteCache speichert mehrere Datensätze und ermöglicht das sequenzielle Lesen dieser Daten.
-type _BngConnChannelByteCache struct {
+type ByteCache struct {
 	dataItems []*_DataItem // Liste von Datensätzen, die im Cache gespeichert sind
 	closed    bool         // Gibt an ob das Objekt geschlossen wurde
 	currentID uint64       // ID für den nächsten hinzuzufügenden Datensatz
@@ -38,6 +38,7 @@ type _BngConnChannelByteCache struct {
 
 // BngConn stellt die Verbindung und den Status eines BNG (Broadband Network Gateway) dar.
 type BngConn struct {
+	_innerhid                string
 	bp                       *sync.WaitGroup                               // Wartet auf laufende Hintergrundprozesse
 	mu                       *sync.Mutex                                   // Mutex für den allgemeinen Zugriffsschutz
 	conn                     net.Conn                                      // Socket-Verbindung des BNG
@@ -73,15 +74,15 @@ type BngConnChannelListener struct {
 
 // BngConnChannel repräsentiert einen Channel für die Kommunikation über eine BNG-Verbindung.
 type BngConnChannel struct {
-	socket              *BngConn                  // Speichert die BNG-Verbindung, über die dieser Channel läuft
-	sesisonId           string                    // Aktuelle Session-ID für den Channel
-	isClosed            SafeBool                  // Flag, das angibt, ob der Channel geschlossen wurde
-	waitOfPackageACK    SafeBool                  // Flag, das angibt, ob auf ein ACK-Paket gewartet wird
-	currentReadingCache SafeBytes                 // Cache für Daten, die gerade gelesen werden
-	openReaders         SafeInt                   // Zähler für die Anzahl der aktuell offenen Leseoperationen
-	openWriters         SafeInt                   // Zähler für die Anzahl der aktuell offenen Schreiboperationen
-	bytesDataInCache    *_BngConnChannelByteCache // Cache für die eingehenden Daten
-	ackChan             SafeAck                   // Kanal für ACK-Rückmeldungen
-	channelRunningError SafeValue[error]          // Speichert Fehler ab, welche bei der Verwendung des Channels auftreten können
-	mu                  *sync.Mutex               // Objekt Mutex
+	socket              *BngConn         // Speichert die BNG-Verbindung, über die dieser Channel läuft
+	sesisonId           string           // Aktuelle Session-ID für den Channel
+	isClosed            SafeBool         // Flag, das angibt, ob der Channel geschlossen wurde
+	waitOfPackageACK    SafeBool         // Flag, das angibt, ob auf ein ACK-Paket gewartet wird
+	currentReadingCache SafeBytes        // Cache für Daten, die gerade gelesen werden
+	openReaders         SafeInt          // Zähler für die Anzahl der aktuell offenen Leseoperationen
+	openWriters         SafeInt          // Zähler für die Anzahl der aktuell offenen Schreiboperationen
+	bytesDataInCache    *ByteCache       // Cache für die eingehenden Daten
+	ackChan             SafeAck          // Kanal für ACK-Rückmeldungen
+	channelRunningError SafeValue[error] // Speichert Fehler ab, welche bei der Verwendung des Channels auftreten können
+	mu                  *sync.Mutex      // Objekt Mutex
 }
