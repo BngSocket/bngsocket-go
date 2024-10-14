@@ -22,8 +22,10 @@ func UpgradeSocketToBngConn(socket net.Conn) (*BngConn, error) {
 		client.conn = cconn
 	case *tls.Conn:
 		client.conn = cconn
+	case net.Conn:
+		client.conn = cconn
 	default:
-		return nil, fmt.Errorf("not supported connect type")
+		return nil, fmt.Errorf("not supported connect type: %s", cconn)
 	}
 
 	// Die Anzahl der Routinen wird übermittelt

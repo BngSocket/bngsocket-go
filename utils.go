@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Speichert alle Zulässigen Transportdatentypen dar
+// Speichert alle Zulässigen Transportdatentypen ab
 var supportedTypes = map[string]bool{
 	"bool":       true,
 	"string":     true,
@@ -27,36 +27,6 @@ var supportedTypes = map[string]bool{
 	"mutexguard": true,
 }
 
-// IsValidMessagePackType prüft, ob der gegebene Typ für MessagePack gültig ist
-func IsValidMessagePackType(t reflect.Type) bool {
-	switch t.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return true
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return true
-	case reflect.Float32, reflect.Float64:
-		return true
-	case reflect.Bool:
-		return true
-	case reflect.String:
-		return true
-	case reflect.Slice:
-		// Prüfen, ob das Slice-Element ein gültiger Typ ist
-		return IsValidMessagePackType(t.Elem())
-	case reflect.Map:
-		// Prüfen, ob Schlüssel und Wert gültige Typen sind
-		return IsValidMessagePackType(t.Key()) && IsValidMessagePackType(t.Elem())
-	case reflect.Struct:
-		return true
-	case reflect.Interface:
-		// MessagePack erlaubt generische Typen, wenn sie interface{} sind
-		return true
-	default:
-		// Andere Typen sind nicht unterstützt
-		return false
-	}
-}
-
 // IsErrorType prüft, ob der Typ ein error ist
 func IsErrorType(t reflect.Type) bool {
 	if t == nil {
@@ -66,42 +36,112 @@ func IsErrorType(t reflect.Type) bool {
 	return t == errorType
 }
 
-// ValidateStructFields prüft jedes Feld eines Structs auf MessagePack-Kompatibilität
-func ValidateStructFields(t reflect.Type) error {
-	// Es wird geprüft ob T NULL ist
+// IsValidMessagePackType prüft, ob der gegebene Typ für MessagePack gültig ist
+func IsValidMessagePackType(t reflect.Type) error {
+	// T dar nicht nill nein
 	if t == nil {
-		return fmt.Errorf("ValidateStructFields[0]: 't' is null, not allowed")
+		return fmt.Errorf("passed Value was nil, not allowed")
 	}
 
-	// Stellen Sie sicher, dass der Typ wirklich ein Struct ist
-	if t.Kind() != reflect.Struct {
-		return fmt.Errorf("ValidateStructFields[1]: expected struct but got %v", t.Kind())
-	}
-
-	// Iteriere über jedes Feld im Struct
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		fieldType := field.Type
-
-		// Falls das Feld ein Pointer ist, prüfen wir den zugrunde liegenden Typ
-		if fieldType.Kind() == reflect.Ptr {
-			fieldType = fieldType.Elem()
-		}
-
-		// Falls das Feld ein weiteres Struct ist, rekursiv dessen Felder validieren
-		if fieldType.Kind() == reflect.Struct {
-			if err := ValidateStructFields(fieldType); err != nil {
-				return fmt.Errorf("ValidateStructFields[1]: invalid type in field 1 %s: %w", field.Name, err)
+	// Die Eigentliche Funktion wird definiert
+	var function func(t reflect.Type, isMapKey bool, isMapValue bool, isSliceValue bool) error
+	function = func(t reflect.Type, isMapKey bool, isMapValue bool, isSliceValue bool) error {
+		switch t.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			return nil
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			return nil
+		case reflect.Float32, reflect.Float64:
+			return nil
+		case reflect.Bool:
+			if isMapKey {
+				return fmt.Errorf("isnt allowed bool as key")
 			}
-		} else {
-			// Für alle anderen Typen prüfen, ob es ein gültiger MessagePack-Typ ist
-			if !IsValidMessagePackType(fieldType) {
-				return fmt.Errorf("ValidateStructFields[1]: Field %s has an invalid MessagePack type: %s", field.Name, fieldType)
+			return nil
+		case reflect.String:
+			return nil
+		case reflect.Slice:
+			if isMapKey {
+				return fmt.Errorf("isnt allowed slice as key")
 			}
+			// Prüfen, ob das Slice-Element ein gültiger Typ ist
+			return function(t.Elem(), isMapKey, isMapValue, true)
+		case reflect.Map:
+			if isMapKey {
+				return fmt.Errorf("isnt allowed map as key")
+			}
+
+			// Prüfen, ob Schlüssel und Wert gültige Typen sind
+			keyErr := function(t.Key(), true, false, isSliceValue)
+			if keyErr != nil {
+				return fmt.Errorf("invalid map key type: %w", keyErr)
+			}
+			valueErr := function(t.Elem(), false, true, isSliceValue)
+			if valueErr != nil {
+				return fmt.Errorf("invalid map value type: %w", valueErr)
+			}
+			return nil
+		case reflect.Struct:
+			// Structs als Key sind nicht zulässig
+			if isMapKey {
+				return fmt.Errorf("isnt allowed struct as key")
+			}
+
+			// Es werden alle Getaggeten Daten geprüft
+			foundedFileds := 0
+			for i := 0; i < t.NumField(); i++ {
+				field := t.Field(i)
+				tag := field.Tag.Get("rpc")
+				if tag == "" {
+					continue
+				}
+
+				// Es wird geprüft ob es sich um einen Zulässien Datentypen handelt
+				if err := function(field.Type, false, isMapValue, isSliceValue); err != nil {
+					return err
+				}
+
+				// Es wird aufgezählt, wieviele Daten gefunden wurden
+				foundedFileds++
+			}
+
+			// Es wird geprüft ob ein Feld gefunden wurde
+			if foundedFileds < 1 {
+				return fmt.Errorf("object %s has no fields", t.Kind())
+			}
+
+			// Es handelt sich um ein zulässiges Slice
+			return nil
+		case reflect.Interface:
+			if isMapKey {
+				return fmt.Errorf("isnt allowed interface as key")
+			}
+
+			// Zulässiges Interface
+			return nil
+		case reflect.Ptr:
+			if isMapKey {
+				return fmt.Errorf("isnt allowed pointer as key")
+			}
+			return function(t.Elem(), false, isMapValue, isSliceValue)
+		default:
+			// Ungültiger Typ, basierend auf dem Kontext (Map-Key, Map-Value, Slice-Element)
+			var context string
+			if isMapKey {
+				context = "as map key"
+			} else if isMapValue {
+				context = "as map value"
+			} else if isSliceValue {
+				context = "as slice element"
+			} else {
+				context = "as top-level type"
+			}
+			return errors.New("unsupported type: " + t.Kind().String() + " " + context)
 		}
 	}
 
-	return nil
+	// Die Eigentliche Prüfung wird durchgeführt
+	return function(t, false, false, false)
 }
 
 // Validiert eine RPC Funktion
@@ -161,7 +201,7 @@ func ValidateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 			}
 
 			// Der Struct-Typ ist nur als Pointer zulässig, daher ist dies erlaubt
-			if err := ValidateStructFields(param.Elem()); err != nil {
+			if err := IsValidMessagePackType(param.Elem()); err != nil {
 				return fmt.Errorf("ValidateRPCFunction[6]: parameter %d is a pointer to a struct with unsupported fields: %w", i, err)
 			}
 		} else if param.Kind() == reflect.Func {
@@ -177,7 +217,7 @@ func ValidateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 			}
 
 			// Wenn es kein Pointer und kein Struct ist, prüfen wir direkt auf MessagePack-Kompatibilität
-			if !IsValidMessagePackType(param) {
+			if err := IsValidMessagePackType(param); err != nil {
 				return fmt.Errorf("ValidateRPCFunction[9]: parameter %d has an unsupported type: %s", i, param.Kind())
 			}
 		}
@@ -204,12 +244,12 @@ func ValidateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 			}
 
 			// Wenn es ein Struct ist, rekursiv alle Felder prüfen
-			if err := ValidateStructFields(outType); err != nil {
+			if err := IsValidMessagePackType(outType); err != nil {
 				return fmt.Errorf("der erste Rückgabewert enthält ungültige MessagePack-Typen: %w", err)
 			}
 		} else {
 			// Prüfen, ob der Typ ein Struct ist
-			if !IsValidMessagePackType(outType) {
+			if err := IsValidMessagePackType(outType); err != nil {
 				return fmt.Errorf("der erste Rückgabewert muss ein zulässiger MessagePack-Typ sein")
 			}
 		}
@@ -229,7 +269,7 @@ func ValidateDatatypeForRpc(param reflect.Type, isRegisterSide bool) error {
 		}
 
 		// Der Struct-Typ ist nur als Pointer zulässig, daher ist dies erlaubt
-		if err := ValidateStructFields(param.Elem()); err != nil {
+		if err := IsValidMessagePackType(param.Elem()); err != nil {
 			return fmt.Errorf("is a pointer to a struct with unsupported fields: %w", err)
 		}
 	} else if param.Kind() == reflect.Func {
@@ -245,7 +285,7 @@ func ValidateDatatypeForRpc(param reflect.Type, isRegisterSide bool) error {
 		}
 
 		// Wenn es kein Pointer und kein Struct ist, prüfen wir direkt auf MessagePack-Kompatibilität
-		if !IsValidMessagePackType(param) {
+		if err := IsValidMessagePackType(param); err != nil {
 			return fmt.Errorf("has an unsupported type: %s", param.Kind())
 		}
 	}

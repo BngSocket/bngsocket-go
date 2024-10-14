@@ -1,10 +1,9 @@
-package bngsocket
+package tests
 
 import (
 	"bytes"
 	"fmt"
 	"net"
-	"os"
 	"reflect"
 	"sync"
 	"testing"
@@ -121,32 +120,12 @@ func client_rpc_test(_ *testing.T, upgrConn *bngsocket.BngConn) error {
 }
 
 // Testet die Serverseite
-func Server(t *testing.T, wg *sync.WaitGroup, swg *sync.WaitGroup, server_channel_wait *sync.WaitGroup) {
-	if err := os.Remove(SOCKET_PATH); err != nil {
-		fmt.Println(err)
-	}
-
-	// Erstelle einen neuen UNIX-Socket
-	listener, err := net.Listen("unix", SOCKET_PATH)
-	if err != nil {
-		fmt.Println("Fehler beim Erstellen des Socket:", err)
-		return
-	}
-	defer listener.Close()
+func server(t *testing.T, wg *sync.WaitGroup, swg *sync.WaitGroup, server_channel_wait *sync.WaitGroup, conn1 net.Conn) {
 	swg.Done()
-
-	// Warte auf eine Verbindung
-	t.Log("Server: Auf neue Verbindung warten")
-	conn, err := listener.Accept()
-	if err != nil {
-		fmt.Println("Fehler beim Akzeptieren der Verbindung:", err)
-		wg.Done()
-		return
-	}
 
 	// Die Verbindung wird geupgradet
 	t.Log("Server: Verbindung upgraden")
-	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
+	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn1)
 	if err != nil {
 		fmt.Println("Fehler beim Upgraden: " + err.Error())
 		wg.Done()
@@ -170,20 +149,10 @@ func Server(t *testing.T, wg *sync.WaitGroup, swg *sync.WaitGroup, server_channe
 }
 
 // Tests die Clientseite
-func Client(t *testing.T, wg *sync.WaitGroup, server_channel_wait *sync.WaitGroup) {
-	// Es wird eine Verbindung mit dem Server hergestellt
-	t.Log("Client: Versuche neue Verbindung herzustellen")
-	conn, err := net.Dial("unix", SOCKET_PATH)
-	if err != nil {
-		fmt.Println("Fehler beim Verbinden zum Socket:", err)
-		wg.Done()
-		return
-	}
-	defer conn.Close()
-
+func client(t *testing.T, wg *sync.WaitGroup, server_channel_wait *sync.WaitGroup, conn1 net.Conn) {
 	// Die Verbindung wird geupgradet und die Channel Tests werden durchgeführt
 	t.Log("Client: Verbindung upgraden")
-	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
+	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn1)
 	if err != nil {
 		fmt.Println("Fehler beim Upgraden: " + err.Error())
 		wg.Done()
@@ -207,16 +176,18 @@ func Client(t *testing.T, wg *sync.WaitGroup, server_channel_wait *sync.WaitGrou
 	wg.Done()
 }
 
-// TestAdd prüft die Additionsfunktion.
-func TestServer(t *testing.T) {
+func socketTesting(t *testing.T) {
+	// Der BngSocket Test wird durchgeführt
+	// Erstellen des in-memory Pipes
+	conn1, conn2 := net.Pipe()
 	swg := &sync.WaitGroup{}
 	wg := &sync.WaitGroup{}
 	server_channel_wait := &sync.WaitGroup{}
 	server_channel_wait.Add(1)
 	swg.Add(1)
 	wg.Add(2)
-	go Server(t, wg, swg, server_channel_wait)
+	go server(t, wg, swg, server_channel_wait, conn1)
 	swg.Wait()
-	go Client(t, wg, server_channel_wait)
+	go client(t, wg, server_channel_wait, conn2)
 	wg.Wait()
 }
