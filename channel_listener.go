@@ -31,7 +31,18 @@ func (o *BngConnChannelListener) Accept() (*BngConnChannel, error) {
 
 	// Die Antwort an den anfragenden Channel zurücksenden.
 	if err := responseNewChannelSession(o.socket, acceptorRequest.requestChannelid, id); err != nil {
+		o.socket._UnregisterChannelSession(id)
 		return nil, fmt.Errorf("BngConnChannelListener->Accept: %s", err.Error())
+	}
+
+	// Der Status des Channels wird auf "WaitOfACK" gesetzt
+	channlObject.waitOfPackageACK.Set(true)
+
+	// Es wird auf die Bestätigung durch die Gegenseite gewartet
+	_, ok = channlObject.ackChan.Read()
+	if !ok {
+		o.socket._UnregisterChannelSession(id)
+		return nil, fmt.Errorf("BngConnChannelListener->Accept: invalid ack recived")
 	}
 
 	// Das registrierte Channel-Objekt zurückgeben.

@@ -343,11 +343,24 @@ func (m *BngConnChannel) enterSignal(signalId uint64) error {
 
 	// Es wird geprüft ob es sich um ein bekanntes Signal handelt
 	switch signalId {
+	// Es handelt sich um ein Closer Signal für den Channel
 	case 0:
 		// Der Channel wird geschlossen
 		if err := m.processClose(false); err != nil {
 			return fmt.Errorf("BngConnChannel->enterSignal: " + err.Error())
 		}
+	// Es handelt sich um ein ACK Signal für den Channel
+	case 1:
+		// Es wird geprüft ob auf ein ACK Paket gewartet wird
+		if !m.waitOfPackageACK.Get() {
+			return fmt.Errorf("BngConnChannel->enterSignal:no waiting for ack")
+		}
+
+		// Es wird geprüft ob der Channel zuletzt das Paket mit der ID abgesendet hat
+		if ok := m.ackChan.Enter(&AckItem{pid: 0, state: 0}); !ok {
+			return io.EOF
+		}
+	// Es handelt sich um ein nicht nachvollziebares Signal
 	default:
 		fmt.Println("UNKOWN SIG")
 		return fmt.Errorf("BngConnChannel->enterSignal: unkown signal")

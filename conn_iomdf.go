@@ -508,6 +508,9 @@ func (s *BngConn) _RegisterNewChannelSession(channelSessionId string) (*BngConnC
 	// Der Channel wird zwischengespeichert
 	s.openChannelInstances.Store(channelSessionId, bngsoc)
 
+	// Debug
+	DebugPrint("Register new Channel '%s'", "NEW", channelSessionId)
+
 	// Das Objekt wird zurückgegeben
 	return bngsoc, nil
 }

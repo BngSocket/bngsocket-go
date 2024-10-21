@@ -43,23 +43,32 @@ func writeBytesIntoChan(socket *BngConn, data []byte) error {
 	return nil
 }
 
+func convertAndWriteBytesIntoChan(conn *BngConn, data interface{}) error {
+	// Den RpcRequest in Bytes serialisieren.
+	bdata, err := msgpack.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("channelWriteACK[0]: %s", err.Error())
+	}
+
+	// Die Bytes in den Schreibkanal des Sockets schreiben.
+	if err := writeBytesIntoChan(conn, bdata); err != nil {
+		return fmt.Errorf("channelWriteACK[1]: %s", err.Error())
+	}
+
+	return nil
+}
+
 // responseUnkownChannel sendet eine Antwort zurück, wenn ein unbekannter Kanal angefordert wurde.
-func responseUnkownChannel(socket *BngConn, sourceId string) error {
+func responseUnkownChannel(conn *BngConn, sourceId string) error {
 	rt := &ChannelRequestResponse{
 		Type:                "chreqresp",       // Typ der Antwort
 		ReqId:               sourceId,          // ID der Anfrage
 		NotAcceptedByReason: "#unkown_channel", // Grund für die Ablehnung
 	}
 
-	// Die Antwort in Bytes serialisieren.
-	bdata, err := msgpack.Marshal(rt)
+	err := convertAndWriteBytesIntoChan(conn, rt)
 	if err != nil {
-		return fmt.Errorf("responseUnkownChannel[0]: %s", err.Error())
-	}
-
-	// Die Bytes in den Schreibkanal des Sockets schreiben.
-	if err := writeBytesIntoChan(socket, bdata); err != nil {
-		return fmt.Errorf("responseUnkownChannel[1]: %s", err.Error())
+		return err
 	}
 
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.
@@ -67,22 +76,16 @@ func responseUnkownChannel(socket *BngConn, sourceId string) error {
 }
 
 // responseNewChannelSession sendet eine Antwort zurück, wenn eine neue Channel-Sitzung registriert wird.
-func responseNewChannelSession(socket *BngConn, channelRequestId string, channelSessionId string) error {
+func responseNewChannelSession(conn *BngConn, channelRequestId string, channelSessionId string) error {
 	rt := &ChannelRequestResponse{
 		Type:      "chreqresp",      // Typ der Antwort
 		ReqId:     channelRequestId, // ID der Anfrage
 		ChannelId: channelSessionId, // ID der neuen Channel-Sitzung
 	}
 
-	// Die Antwort in Bytes serialisieren.
-	bdata, err := msgpack.Marshal(rt)
+	err := convertAndWriteBytesIntoChan(conn, rt)
 	if err != nil {
-		return fmt.Errorf("responseNewChannelSession[0]: %s", err.Error())
-	}
-
-	// Die Bytes in den Schreibkanal des Sockets schreiben.
-	if err := writeBytesIntoChan(socket, bdata); err != nil {
-		return fmt.Errorf("responseNewChannelSession[1]: %s", err.Error())
+		return err
 	}
 
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.
@@ -90,22 +93,16 @@ func responseNewChannelSession(socket *BngConn, channelRequestId string, channel
 }
 
 // responseChannelNotOpen sendet ein Signal zurück, dass der angegebene Channel nicht geöffnet ist.
-func responseChannelNotOpen(socket *BngConn, channelId string) error {
+func responseChannelNotOpen(conn *BngConn, channelId string) error {
 	rt := &ChannlSessionTransportSignal{
 		Type:             "chsig",   // Typ des Signals
 		ChannelSessionId: channelId, // ID des nicht geöffneten Channels
 		Signal:           0,         // Signalwert (0 bedeutet "nicht geöffnet")
 	}
 
-	// Das Signal in Bytes serialisieren.
-	bdata, err := msgpack.Marshal(rt)
+	err := convertAndWriteBytesIntoChan(conn, rt)
 	if err != nil {
-		return fmt.Errorf("responseChannelNotOpen[0]: %s", err.Error())
-	}
-
-	// Die Bytes in den Schreibkanal des Sockets schreiben.
-	if err := writeBytesIntoChan(socket, bdata); err != nil {
-		return fmt.Errorf("responseChannelNotOpen[1]: %s", err.Error())
+		return err
 	}
 
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.
@@ -145,15 +142,9 @@ func channelWriteACK(conn *BngConn, pid uint64, sessionId string) error {
 		State:            0,         // Zustand (0 bedeutet ACK)
 	}
 
-	// Die ACK-Antwort in Bytes serialisieren.
-	bdata, err := msgpack.Marshal(rt)
+	err := convertAndWriteBytesIntoChan(conn, rt)
 	if err != nil {
-		return fmt.Errorf("channelWriteACK[0]: %s", err.Error())
-	}
-
-	// Die Bytes in den Schreibkanal des Sockets schreiben.
-	if err := writeBytesIntoChan(conn, bdata); err != nil {
-		return fmt.Errorf("channelWriteACK[1]: %s", err.Error())
+		return err
 	}
 
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.
@@ -167,15 +158,9 @@ func socketWriteRpcSuccessResponse(conn *BngConn, value []*RpcDataCapsle, id str
 		Return: value,
 	}
 
-	// Den RpcRequest in Bytes serialisieren.
-	bdata, err := msgpack.Marshal(rt)
+	err := convertAndWriteBytesIntoChan(conn, rt)
 	if err != nil {
-		return fmt.Errorf("channelWriteACK[0]: %s", err.Error())
-	}
-
-	// Die Bytes in den Schreibkanal des Sockets schreiben.
-	if err := writeBytesIntoChan(conn, bdata); err != nil {
-		return fmt.Errorf("channelWriteACK[1]: %s", err.Error())
+		return err
 	}
 
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.
@@ -189,15 +174,9 @@ func socketWriteRpcErrorResponse(conn *BngConn, errstr string, id string) error 
 		Error: errstr,
 	}
 
-	// Den RpcRequest in Bytes serialisieren.
-	bdata, err := msgpack.Marshal(rt)
+	err := convertAndWriteBytesIntoChan(conn, rt)
 	if err != nil {
-		return fmt.Errorf("channelWriteACK[0]: %s", err.Error())
-	}
-
-	// Die Bytes in den Schreibkanal des Sockets schreiben.
-	if err := writeBytesIntoChan(conn, bdata); err != nil {
-		return fmt.Errorf("channelWriteACK[1]: %s", err.Error())
+		return err
 	}
 
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.
@@ -211,15 +190,25 @@ func channelWriteCloseSignal(conn *BngConn, channelSessionId string) error {
 		Signal:           0,
 	}
 
-	// Den RpcRequest in Bytes serialisieren.
-	bdata, err := msgpack.Marshal(rt)
+	err := convertAndWriteBytesIntoChan(conn, rt)
 	if err != nil {
-		return fmt.Errorf("channelWriteACK[0]: %s", err.Error())
+		return err
 	}
 
-	// Die Bytes in den Schreibkanal des Sockets schreiben.
-	if err := writeBytesIntoChan(conn, bdata); err != nil {
-		return fmt.Errorf("channelWriteACK[1]: %s", err.Error())
+	// Es ist kein Fehler aufgetreten, Rückgabe nil.
+	return nil
+}
+
+func channelWriteACKForJoin(conn *BngConn, channelSessionId string) error {
+	rt := &ChannlSessionTransportSignal{
+		Type:             "chsig",
+		ChannelSessionId: channelSessionId,
+		Signal:           1,
+	}
+
+	err := convertAndWriteBytesIntoChan(conn, rt)
+	if err != nil {
+		return err
 	}
 
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.

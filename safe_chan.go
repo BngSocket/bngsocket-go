@@ -1,7 +1,5 @@
 package bngsocket
 
-import "fmt"
-
 // NewSafeChan erstellt einen neuen SafeChan mit dem angegebenen Puffer.
 func NewSafeChan[T any]() *SafeChan[T] {
 	return &SafeChan[T]{
@@ -31,7 +29,7 @@ func (sc *SafeChan[T]) Enter(value T) bool {
 	select {
 	case sc.ch <- value:
 	default:
-		fmt.Println("NT")
+		DebugPrint("Chan closed")
 		return false
 	}
 

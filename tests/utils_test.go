@@ -197,9 +197,17 @@ func testValidateRPCFunction(t *testing.T) {
 	}
 
 	// Es wird eine nicht Zulässige Testfunktion auf der Register Seite registriert
+	incorrectFunctionOnRegisterSide := func(req *bngsocket.BngRequest) int {
+		return -1
+	}
+	value = reflect.ValueOf(incorrectFunctionOnRegisterSide)
+	typeof = value.Type()
+	if err := bngsocket.ValidateRPCFunction(value, typeof, true); err == nil {
+		t.Fatal("Invalid function testing failed, function was allowed from fucntion, function ist not correct!")
+	}
 }
 
-func utilsTesting(t *testing.T) {
+func TestUtils(t *testing.T) {
 	// Die Funktion "IsErrorType" wird getestet
 	t.Log("Test 'IsErrorType' function")
 	testIsErrorType(t)

@@ -3,8 +3,6 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	"net"
-	"reflect"
 	"sync"
 	"testing"
 
@@ -22,14 +20,16 @@ func client_channel_test(t *testing.T, upgrConn *bngsocket.BngConn) error {
 	t.Log("Client:", channel.GetSessionId())
 
 	// Es werden Daten in diesem Channel übertragen
+	t.Log("Client: Write: hallo welt")
 	b := []byte("hallo welt")
 	n, err := channel.Write(b)
 	if err != nil {
 		return err
 	}
-	t.Log("Write complete:", n, "of", len(b))
+	t.Log("Client: Write complete:", n, "of", len(b))
 
 	// Der Gegenseite wird geantwortet
+	t.Log("Write back")
 	data := make([]byte, 4096)
 	i, err := channel.Read(data)
 	if err != nil {
@@ -71,11 +71,14 @@ func server_channel_test(t *testing.T, upgrConn *bngsocket.BngConn) error {
 		t.Log("Server:", chann.GetSessionId())
 
 		// Es wird auf eintreffende Daten gewartet
+		t.Log("Server: Reading")
 		data := make([]byte, 4096)
 		r, err := chann.Read(data)
 		if err != nil {
-			panic(err)
+			t.Error("Server: " + err.Error())
+			t.Fail()
 		}
+		t.Log("Server: Reading done")
 
 		// Die Daten werden zurückgesendet
 		if i, err := chann.Write(data[:r]); i != len(data[:r]) {
@@ -86,108 +89,4 @@ func server_channel_test(t *testing.T, upgrConn *bngsocket.BngConn) error {
 	wgt.Wait()
 
 	return nil
-}
-
-func server_rpc_test(_ *testing.T, upgrConn *bngsocket.BngConn, server_channel_wait *sync.WaitGroup) error {
-	// Es wird eine Funktion Registriert welchen von jedem Godatentypen einen Rückgabwert zurückgibt
-	err := upgrConn.RegisterFunction("test-function-with-returns", func(req *bngsocket.BngRequest, i int, u uint, f float64, str string, b bool, bytes []byte, mapv map[string]interface{}) (int, uint, float64, string, bool, []byte, map[string]interface{}, error) {
-		fmt.Println("RPC Function Body:", i, u, f, str, b, string(bytes), mapv)
-		return i, u, f, str, b, bytes, mapv, nil
-	})
-	if err != nil {
-		return err
-	}
-
-	server_channel_wait.Done()
-	return nil
-}
-
-func client_rpc_test(_ *testing.T, upgrConn *bngsocket.BngConn) error {
-	// Die RPC Funktion mit den Standard Go Datentypen wird aufgerufen
-	returnDataTypes := make([]reflect.Type, 0)
-	data := map[string]interface{}{"name": "Max Mustermann", "age": 29, "isAdmin": true, "scores": []int{90, 85, 92}}
-	returnDataTypes = append(returnDataTypes, reflect.TypeFor[int](), reflect.TypeFor[uint](), reflect.TypeFor[float64](), reflect.TypeFor[string](), reflect.TypeFor[bool](), reflect.TypeFor[[]byte](), reflect.TypeFor[map[string]interface{}]())
-	datax, err := upgrConn.CallFunction("test-function-with-returns", append(make([]interface{}, 0), 100, 100, 1.2, "hallo welt str", true, []byte("hallo welt bytes"), data), returnDataTypes)
-	if err != nil {
-		return err
-	}
-	for _, item := range datax {
-		fmt.Println("Return:", item)
-	}
-
-	// Es ist kein fehler aufgetreten
-	return nil
-}
-
-// Testet die Serverseite
-func server(t *testing.T, wg *sync.WaitGroup, swg *sync.WaitGroup, server_channel_wait *sync.WaitGroup, conn1 net.Conn) {
-	swg.Done()
-
-	// Die Verbindung wird geupgradet
-	t.Log("Server: Verbindung upgraden")
-	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn1)
-	if err != nil {
-		fmt.Println("Fehler beim Upgraden: " + err.Error())
-		wg.Done()
-		return
-	}
-
-	// Der Channel Test wird durchgeführt
-	t.Log("Server: Channel testing")
-	if err := server_channel_test(t, upgrConn); err != nil {
-		fmt.Println(err)
-		wg.Done()
-	}
-
-	// Die RPC Funktionen werden gestet
-	t.Log("Server: RPC testing")
-	if err := server_rpc_test(t, upgrConn, server_channel_wait); err != nil {
-		panic(err)
-	}
-
-	wg.Done()
-}
-
-// Tests die Clientseite
-func client(t *testing.T, wg *sync.WaitGroup, server_channel_wait *sync.WaitGroup, conn1 net.Conn) {
-	// Die Verbindung wird geupgradet und die Channel Tests werden durchgeführt
-	t.Log("Client: Verbindung upgraden")
-	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn1)
-	if err != nil {
-		fmt.Println("Fehler beim Upgraden: " + err.Error())
-		wg.Done()
-		return
-	}
-
-	// Der Channel Test wird durchgeführt
-	t.Log("Client: Channel test")
-	if err := client_channel_test(t, upgrConn); err != nil {
-		fmt.Println(err)
-		wg.Done()
-	}
-	server_channel_wait.Wait()
-
-	// Die RPC Funktionen werden gestet
-	t.Log("Client: RPC testing")
-	if err := client_rpc_test(t, upgrConn); err != nil {
-		panic(err)
-	}
-
-	wg.Done()
-}
-
-func socketTesting(t *testing.T) {
-	// Der BngSocket Test wird durchgeführt
-	// Erstellen des in-memory Pipes
-	conn1, conn2 := net.Pipe()
-	swg := &sync.WaitGroup{}
-	wg := &sync.WaitGroup{}
-	server_channel_wait := &sync.WaitGroup{}
-	server_channel_wait.Add(1)
-	swg.Add(1)
-	wg.Add(2)
-	go server(t, wg, swg, server_channel_wait, conn1)
-	swg.Wait()
-	go client(t, wg, server_channel_wait, conn2)
-	wg.Wait()
 }

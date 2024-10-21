@@ -80,6 +80,13 @@ func (s *BngConn) JoinChannel(channelId string) (*BngConnChannel, error) {
 		return nil, fmt.Errorf("bngsocket->JoinChannel: " + chreq.Error)
 	}
 
+	// Dem Server wird mitgeteilt dass die Verbindung erfolgreich zustande gekommen ist
+	if err := channelWriteACKForJoin(s, response.ChannelId); err != nil {
+		// Die Verbindung wird Entregistriert
+		s._UnregisterChannelSession(channelId)
+		return nil, err
+	}
+
 	// Der Socket Channel wird zurückgegeben
 	return channel, nil
 }
