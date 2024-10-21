@@ -187,9 +187,16 @@ func testIsValidMessagePackType(t *testing.T) {
 
 func testValidateRPCFunction(t *testing.T) {
 	// Es wird eine Zulässige Testfunktion auf der Registrierer Seite
-	correctFunctionOnRegisterSide := func() {
-
+	correctFunctionOnRegisterSide := func(req *bngsocket.BngRequest) error {
+		return nil
 	}
+	value := reflect.ValueOf(correctFunctionOnRegisterSide)
+	typeof := value.Type()
+	if err := bngsocket.ValidateRPCFunction(value, typeof, true); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	// Es wird eine nicht Zulässige Testfunktion auf der Register Seite registriert
 }
 
 func utilsTesting(t *testing.T) {
