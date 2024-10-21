@@ -12,7 +12,7 @@ import (
 )
 
 // Testet die Serverseite
-func rpcServer(conn1 net.Conn) {
+func serveConnServerRpc(conn1 net.Conn) {
 	// Die Verbindung wird geupgradet
 	bngsocket.DebugPrint("Verbindung upgraden")
 	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn1)
@@ -40,7 +40,7 @@ func rpcServer(conn1 net.Conn) {
 	calledFunction.Wait()
 }
 
-func TestServer(t *testing.T) {
+func TestRpcServer(t *testing.T) {
 	bngsocket.DebugSetPrintFunction(t.Log)
 	t.Log("Open UnixSocket")
 	os.Remove("/tmp/unixsock")
@@ -61,6 +61,6 @@ func TestServer(t *testing.T) {
 		}
 
 		// Der RPC Server wird gestartet
-		go rpcServer(conn)
+		go serveConnServerRpc(conn)
 	}
 }
