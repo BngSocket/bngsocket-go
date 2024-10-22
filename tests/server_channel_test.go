@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"os"
@@ -8,11 +9,6 @@ import (
 
 	"github.com/CustodiaJS/bngsocket"
 )
-
-func acceptNewChannelRequests(channel *bngsocket.BngConnChannelListener) {
-	// Diese Schleife nimmt eintreffende Datensätze entgegegen
-
-}
 
 func serveConnServerChannel(conn net.Conn) {
 	// Die Verbindung wird geupgradet
@@ -23,15 +19,7 @@ func serveConnServerChannel(conn net.Conn) {
 		return
 	}
 
-	// Es wird ein neuer Channel bereitgestellt
-	testChannel, err := upgrConn.OpenChannelListener("test-channel")
-	if err != nil {
-		bngsocket.DebugPrint(err.Error())
-		return
-	}
-
-	// Es wird auf neu Eintreffende Channel Anfragen geantwortet
-	go acceptNewChannelRequests(testChannel)
+	// Es wird versucht einen 
 }
 
 func TestChannelServer(t *testing.T) {
