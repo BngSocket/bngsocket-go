@@ -341,24 +341,6 @@ func (o *BngConn) _ConsensusProtocolTermination(reason error) {
 	o.conn.Close()
 }
 
-// Wird verwendet um mitzuteilen dass die Verbindung getrennt wurde
-func (o *BngConn) _ConsensusConnectionClosedSignal() {
-	// Der Mutex wird angewenet
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	// Es wird geprüft ob beretis ein Fehler vorhanden ist
-	if o.runningError.Get() != nil {
-		return
-	}
-
-	// Es wird Signalisiert das der Vorgang beendet wurde
-	o.closed.Set(true)
-
-	// Der Socket wird geschlossen
-	o.conn.Close()
-}
-
 // Registriert eine Funktion im allgemeien
 func (s *BngConn) _RegisterFunction(hidden bool, nameorid string, fn interface{}) error {
 	// Die RPC Funktion wird validiert
@@ -509,7 +491,7 @@ func (s *BngConn) _RegisterNewChannelSession(channelSessionId string) (*BngConnC
 	s.openChannelInstances.Store(channelSessionId, bngsoc)
 
 	// Debug
-	DebugPrint("Register new Channel '%s'", "NEW", channelSessionId)
+	DebugPrint(fmt.Sprintf("Register new Channel '%s'", channelSessionId))
 
 	// Das Objekt wird zurückgegeben
 	return bngsoc, nil
@@ -522,9 +504,4 @@ func (s *BngConn) _UnregisterChannelSession(channelSessionId string) error {
 
 	// Es ist kein Fehler aufgetreten
 	return nil
-}
-
-// Wird aufgerufen wenn die Verbindung geschlossen wurde
-func (s *BngConn) _ConnectionWasClosed(signalByRoutineId uint8, signalId uint8) {
-
 }

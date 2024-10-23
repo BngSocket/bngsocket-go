@@ -21,7 +21,6 @@ func serveChannelConnection(channel *bngsocket.BngConnChannel) {
 	// Die Eingetroffenen Daten werden ausgelesen
 	data := readed[:n]
 	fmt.Println(data)
-
 }
 
 func serveConnClientChannel(conn net.Conn) {

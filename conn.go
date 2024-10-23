@@ -2,6 +2,7 @@ package bngsocket
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 	"strings"
@@ -116,23 +117,15 @@ func (s *BngConn) CallFunction(name string, params []interface{}, returnDataType
 
 // Wird verwendet um die Verbindung zu schließen
 func (s *BngConn) Close() error {
-	// Es wird Markiert dass der Socket geschlossen ist
-	s.mu.Lock()
-	s.closing.Set(true)
+	// Es wird geprüft ob die Verbindung bereits getrennt wurde,
+	// wenn ja wird ein Fehler zurückgegeben
+	if connectionIsClosed(s) {
+		return io.EOF
+	}
 
-	// Der Socket wird geschlossen
-	closeerr := s.conn.Close()
-	s.mu.Unlock()
-
-	// Es wird gewartet dass alle Hintergrundaufgaben abgeschlossen werden
-	s.bp.Wait()
-
-	// Der Writeable Chan wird geschlossen
-	s.writingChan.Close()
-
-	// Sollte ein Fehler vorhanden sein, wird dieser Zurückgegeben
-	if closeerr != nil {
-		return fmt.Errorf("bngsocket->Close: " + closeerr.Error())
+	// Die Verbindung wird Final geschlossen
+	if err := fullCloseConn(s); err != nil {
+		return err
 	}
 
 	// Es ist kein Fehler vorhanden

@@ -3,10 +3,8 @@ package bngsocket
 import (
 	"errors"
 	"fmt"
-	"io"
 	"reflect"
 	"strings"
-	"syscall"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/google/uuid"
@@ -606,66 +604,4 @@ func SplitDataIntoChunks(data []byte, chunkSize int) [][]byte {
 		data = data[cSize:]
 	}
 	return chunks
-}
-
-// Wird verwenet um beim Lessevorgang auf Fehler zu Reagieren
-func ReadProcessErrorHandling(socket *BngConn, err error) {
-	// Der Fehler wird ermittelt
-	if errors.Is(err, io.EOF) {
-		// Die Verbindung wurde getrennt (EOF)
-		socket._ConsensusConnectionClosedSignal()
-		return
-	} else if errors.Is(err, syscall.ECONNRESET) {
-		// Verbindung wurde vom Peer zurückgesetzt
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
-		return
-	} else if errors.Is(err, syscall.EPIPE) {
-		// Verbindung wurde vom Peer zurückgesetzt
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
-		return
-	} else {
-		// Verbindung wurde vom Peer zurückgesetzt
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
-		return
-	}
-}
-
-// Wird verwenet um beim Lessevorgang auf Fehler zu Reagieren
-func WriteProcessErrorHandling(socket *BngConn, err error) {
-	// Der Fehler wird ermittelt
-	if errors.Is(err, io.EOF) {
-		// Die Verbindung wurde getrennt (EOF)
-		socket._ConsensusConnectionClosedSignal()
-		return
-	} else if errors.Is(err, syscall.ECONNRESET) {
-		// Verbindung wurde vom Peer zurückgesetzt
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
-		return
-	} else if errors.Is(err, syscall.EPIPE) {
-		// Verbindung wurde vom Peer zurückgesetzt
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
-		return
-	} else {
-		// Verbindung wurde vom Peer zurückgesetzt
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
-		return
-	}
-}
-
-// Gibt an ob die Hintergrund Dauerschleifen eines Sockets aktiv sein sollen
-func RunningBackgroundServingLoop(ipcc *BngConn) bool {
-	return !ConnectionIsClosed(ipcc)
-}
-
-// Gibt an ob eine Verbinding geschlossen wurde
-func ConnectionIsClosed(ipcc *BngConn) bool {
-	// Der Mutex wird angewendet
-	ipcc.mu.Lock()
-	defer ipcc.mu.Unlock()
-
-	// Der Wert wird ermittelt
-	value := bool(ipcc.closed.Get() || ipcc.closing.Get() || ipcc.runningError.Get() != nil)
-
-	// Der Wert wird zurückgegeben
-	return value
 }
