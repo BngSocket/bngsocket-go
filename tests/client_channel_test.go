@@ -2,10 +2,15 @@ package tests
 
 import (
 	"net"
+	"os"
 	"testing"
 
 	"github.com/CustodiaJS/bngsocket"
 )
+
+func serveChannelConnection(channel *bngsocket.BngConnChannel) {
+
+}
 
 func serveConnClientChannel(conn net.Conn) {
 	// Die Verbindung wird geupgradet
@@ -13,10 +18,27 @@ func serveConnClientChannel(conn net.Conn) {
 	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
 	if err != nil {
 		bngsocket.DebugPrint(err.Error())
-		return
+		os.Exit(1)
 	}
 
 	// Es wird ein neuer Channel erzeugt
+	listener, err := upgrConn.OpenChannelListener("test-channel")
+	if err != nil {
+		bngsocket.DebugPrint(err.Error())
+		os.Exit(1)
+	}
+
+	for {
+		// Es wird auf neue Verbindungen gewartet
+		channel, err := listener.Accept()
+		if err != nil {
+			bngsocket.DebugPrint(err.Error())
+			os.Exit(1)
+		}
+
+		// Es wird auf Eintreffende Daten gewartet
+		go serveChannelConnection(channel)
+	}
 }
 
 func TestChannelClient(t *testing.T) {
@@ -30,6 +52,5 @@ func TestChannelClient(t *testing.T) {
 		t.FailNow()
 	}
 
-	// Der RPC Server wird gestartet
-	go serveConnClientChannel(conn)
+	serveConnClientChannel(conn)
 }
