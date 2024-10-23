@@ -163,3 +163,8 @@ func (s *BngConn) SetReadDeadline(t time.Time) error {
 func (s *BngConn) SetWriteDeadline(t time.Time) error {
 	return s.conn.SetWriteDeadline(t)
 }
+
+// Wird verwendet um eine P2P Verbindung mit der Gegenseite aufzubauen
+func (s *BngConn) OpenP2PConnection() error {
+	return nil
+}

@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 	"os"
@@ -15,11 +14,24 @@ func serveConnServerChannel(conn net.Conn) {
 	bngsocket.DebugPrint("Verbindung upgraden")
 	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
 	if err != nil {
-		fmt.Println("Fehler beim Upgraden: " + err.Error())
+		bngsocket.DebugPrint(err.Error())
 		return
 	}
 
-	// Es wird versucht einen 
+	// Es wird eine ausgehende Verbindung hergestellt
+	channel, err := upgrConn.JoinChannel("test-channel")
+	if err != nil {
+		bngsocket.DebugPrint(err.Error())
+		return
+	}
+
+	// Es wird ein HalloWelt Paket an den Client gesendet
+	n, err := channel.Write([]byte("HalloWelt"))
+	if err != nil {
+		bngsocket.DebugPrint(err.Error())
+		return
+	}
+	fmt.Println("Writed: ", n)
 }
 
 func TestChannelServer(t *testing.T) {
