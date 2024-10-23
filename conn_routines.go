@@ -12,7 +12,13 @@ func constantReading(o *BngConn) {
 	defer o.bp.Done()
 
 	// Debug am ende
-	defer DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was stopped", o._innerhid))
+	defer func() {
+		// DEBUG Log
+		DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was stopped", o._innerhid))
+
+		// Es wird Signalisiert dass die Routine geschlossen wurde
+		o._ConnectionWasClosed(0, 0)
+	}()
 
 	// Der Buffer Reader ließt die Daten und speichert sie dann im Cache
 	reader := bufio.NewReader(o.conn)
@@ -112,7 +118,13 @@ func constantWriting(o *BngConn) {
 	defer o.bp.Done()
 
 	// Debug am ende
-	defer DebugPrint(fmt.Sprintf("BngConn(%s): Constant writing to Socket was stopped", o._innerhid))
+	defer func() {
+		// Debug
+		DebugPrint(fmt.Sprintf("BngConn(%s): Constant writing to Socket was stopped", o._innerhid))
+
+		// Es wird Signalisiert dass die Routine geschlossen wurde
+		o._ConnectionWasClosed(1, 0)
+	}()
 
 	// Der Writer wird erstellt
 	writer := bufio.NewWriter(o.conn)
