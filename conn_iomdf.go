@@ -523,3 +523,8 @@ func (s *BngConn) _UnregisterChannelSession(channelSessionId string) error {
 	// Es ist kein Fehler aufgetreten
 	return nil
 }
+
+// Wird aufgerufen wenn die Verbindung geschlossen wurde
+func (s *BngConn) _ConnectionWasClosed(signalByRoutineId uint8, signalId uint8) {
+
+}
