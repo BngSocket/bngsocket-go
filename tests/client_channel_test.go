@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"testing"
@@ -9,6 +10,17 @@ import (
 )
 
 func serveChannelConnection(channel *bngsocket.BngConnChannel) {
+	// Es wird auf die Eintreffenden Daten gewartet
+	readed := make([]byte, 1024)
+	n, err := channel.Read(readed)
+	if err != nil {
+		bngsocket.DebugPrint(err.Error())
+		os.Exit(1)
+	}
+
+	// Die Eingetroffenen Daten werden ausgelesen
+	data := readed[:n]
+	fmt.Println(data)
 
 }
 
