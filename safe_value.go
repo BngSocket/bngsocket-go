@@ -1,6 +1,10 @@
 package bngsocket
 
-import "sync"
+import (
+	"fmt"
+	"reflect"
+	"sync"
+)
 
 func newSafeBool(v bool) SafeBool {
 	return SafeBool{
@@ -21,6 +25,7 @@ func newSafeInt(v int) SafeInt {
 }
 
 func newSafeValue[T any](v T) SafeValue[T] {
+	DebugPrint(fmt.Sprintf("New Safe Value generated %s", reflect.TypeFor[T]().String()))
 	return SafeValue[T]{
 		value:   &v,
 		lock:    new(sync.Mutex),

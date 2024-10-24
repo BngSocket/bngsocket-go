@@ -252,7 +252,7 @@ func (m *BngConnChannel) processClose(sendSignal bool) error {
 	}()
 
 	// Die ACK Chan wird geschlosen
-	m.ackChan.Close()
+	m.ackChan.Destroy()
 	m.bytesDataInCache.Close()
 
 	// Es wird ein Close Paket an die Gegenseite gesendet

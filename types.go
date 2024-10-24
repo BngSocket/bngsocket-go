@@ -39,16 +39,16 @@ type ByteCache struct {
 // BngConn stellt die Verbindung und den Status eines BNG (Broadband Network Gateway) dar.
 type BngConn struct {
 	_innerhid                string
-	bp                       *sync.WaitGroup                               // Wartet auf laufende Hintergrundprozesse
 	mu                       *sync.Mutex                                   // Mutex für den allgemeinen Zugriffsschutz
 	conn                     net.Conn                                      // Socket-Verbindung des BNG
 	closed                   SafeBool                                      // Flag, das angibt, ob der Socket geschlossen wurde
 	closing                  SafeBool                                      // Flag, das angibt, ob der Socket geschlossen werden soll
+	functions                SafeMap[string, reflect.Value]                // Speichert die registrierten Funktionen
 	runningError             SafeValue[error]                              // Speichert Fehler, die während des Betriebs auftreten
 	writingChan              *SafeChan[*dataWritingResolver]               // Kanal für sendbare Daten
 	openRpcRequests          SafeMap[string, chan *RpcResponse]            // Speichert alle offenen RPC-Anfragen
-	functions                SafeMap[string, reflect.Value]                // Speichert die registrierten Funktionen
 	hiddenFunctions          SafeMap[string, reflect.Value]                // Speichert die versteckten (geteilten) Funktionen
+	backgroundProcesses      *sync.WaitGroup                               // Wartet auf laufende Hintergrundprozesse
 	openChannelListener      SafeMap[string, *BngConnChannelListener]      // Speichert alle verfügbaren Channel-Listener
 	openChannelInstances     SafeMap[string, *BngConnChannel]              // Speichert alle aktiven Channel-Instanzen
 	openChannelJoinProcesses SafeMap[string, chan *ChannelRequestResponse] // Speichert alle offenen Channel-Join-Prozesse

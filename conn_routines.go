@@ -27,9 +27,10 @@ func constantReading(o *BngConn) {
 		rBytes := make([]byte, 4096)
 		sizeN, err := reader.Read(rBytes)
 		if err != nil {
+			fmt.Println("BREAK END")
 			// Der Fehler wird ausgewertet
 			readProcessErrorHandling(o, err)
-			break
+			return
 		}
 
 		// Die Daten werden im Cache zwischengespeichert
@@ -86,14 +87,14 @@ func constantReading(o *BngConn) {
 				transportBytes := make([]byte, len(cachedData))
 				copy(transportBytes, cachedData)
 				cachedData = make([]byte, 0)
-				o.bp.Add(1)
+				o.backgroundProcesses.Add(1)
 
 				// Debug
 				DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes was recived", o._innerhid, len(transportBytes)+ics))
 
 				// Die Daten werden durch die GoRoutine verarbeitet
 				go func(data []byte) {
-					defer o.bp.Done()
+					defer o.backgroundProcesses.Done()
 					o._ProcessReadedData(data)
 				}(transportBytes)
 			} else {
@@ -112,7 +113,7 @@ func constantWriting(o *BngConn) {
 		DebugPrint(fmt.Sprintf("BngConn(%s): Constant writing to Socket was stopped", o._innerhid))
 
 		// Wird am ende der Lesefunktion aufgerufen
-		defer o.bp.Done()
+		defer o.backgroundProcesses.Done()
 	}()
 
 	// Der Writer wird erstellt

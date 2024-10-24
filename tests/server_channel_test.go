@@ -26,12 +26,11 @@ func serveConnServerChannel(conn net.Conn) {
 	}
 
 	// Es wird ein HalloWelt Paket an den Client gesendet
-	n, err := channel.Write([]byte("HalloWelt"))
+	_, err = channel.Write([]byte("HalloWelt"))
 	if err != nil {
 		bngsocket.DebugPrint(err.Error())
 		return
 	}
-	fmt.Println("Writed: ", n)
 }
 
 func TestChannelServer(t *testing.T) {

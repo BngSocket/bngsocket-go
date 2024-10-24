@@ -11,7 +11,7 @@ func _NewBaseBngSocketObject() *BngConn {
 	// Das BngConn Objekt wird erzeugt
 	return &BngConn{
 		_innerhid:                uuid.NewString(),
-		bp:                       &sync.WaitGroup{},
+		backgroundProcesses:      &sync.WaitGroup{},
 		mu:                       &sync.Mutex{},
 		closed:                   newSafeBool(false),
 		closing:                  newSafeBool(false),

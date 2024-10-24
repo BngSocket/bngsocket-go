@@ -29,7 +29,7 @@ func UpgradeSocketToBngConn(socket net.Conn) (*BngConn, error) {
 	}
 
 	// Die Anzahl der Routinen wird übermittelt
-	client.bp.Add(2)
+	client.backgroundProcesses.Add(2)
 
 	// Debug
 	DebugPrint(fmt.Sprintf("Connection upraged to BngConn = %s", client._innerhid))

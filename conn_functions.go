@@ -13,6 +13,7 @@ func readProcessErrorHandling(socket *BngConn, err error) {
 	if errors.Is(err, io.EOF) {
 		// Die Verbindung wurde getrennt (EOF)
 		consensusConnectionClosedSignal(socket)
+		fmt.Println("readProcessErrorHandling_E")
 		return
 	} else if errors.Is(err, syscall.ECONNRESET) {
 		// Verbindung wurde vom Peer zurückgesetzt
@@ -58,19 +59,27 @@ func runningBackgroundServingLoop(ipcc *BngConn) bool {
 
 // Gibt an ob eine Verbinding geschlossen wurde
 func connectionIsClosed(ipcc *BngConn) bool {
-	// Der Wert wird ermittelt
-	value := bool(ipcc.closed.Get() || ipcc.closing.Get() || ipcc.runningError.Get() != nil)
-
-	// Der Wert wird zurückgegeben
-	return value
+	if ipcc.closed.Get() {
+		return true
+	}
+	if ipcc.closing.Get() {
+		return true
+	}
+	if ipcc.runningError.Get() != nil {
+		return true
+	}
+	return false
 }
 
 // Wird verwendet um mitzuteilen dass die Verbindung getrennt wurde
 func consensusConnectionClosedSignal(o *BngConn) {
 	// Es wird geprüft ob beretis ein Fehler vorhanden ist
-	if o.runningError.Get() != nil {
+	if connectionIsClosed(o) {
+		fmt.Println("IS_CLOSED")
 		return
 	}
+
+	fmt.Println("FULL_CLOSER")
 
 	// Die Verbindung wird geschlossen, mögliche Fehler werden dabei Ignoriert
 	fullCloseConn(o)
@@ -78,6 +87,7 @@ func consensusConnectionClosedSignal(o *BngConn) {
 
 // Wird verwendet um den Socket vollständig zu schlißene
 func fullCloseConn(s *BngConn) error {
+	// DEBUG
 	defer DebugPrint("Connection closed")
 
 	// Es wird Markiert dass der Socket geschlossen ist
@@ -88,11 +98,16 @@ func fullCloseConn(s *BngConn) error {
 	closeerr := s.conn.Close()
 	s.mu.Unlock()
 
-	// Es wird gewartet dass alle Hintergrundaufgaben abgeschlossen werden
-	s.bp.Wait()
-
 	// Der Writeable Chan wird geschlossen
-	s.writingChan.Close()
+	s.writingChan.Destroy()
+
+	// Es wird gewartet dass alle Hintergrundaufgaben abgeschlossen werden
+	fmt.Println("WAIT OF END")
+	s.backgroundProcesses.Wait()
+	fmt.Println("ENDL_WAIT")
+
+	// Es wird Signalisiert, dass die Verbindung final geschlossen wurde
+	s.closed.Set(true)
 
 	// Sollte ein Fehler vorhanden sein, wird dieser Zurückgegeben
 	if closeerr != nil {
