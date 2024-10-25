@@ -11,8 +11,7 @@ import (
 func readProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
-		// Die Verbindung wurde getrennt (EOF)
-		consensusConnectionClosedSignal(socket)
+		go fullCloseConn(socket)
 		fmt.Println("readProcessErrorHandling_E")
 		return
 	} else if errors.Is(err, syscall.ECONNRESET) {
@@ -35,7 +34,7 @@ func writeProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
 		// Die Verbindung wurde getrennt (EOF)
-		consensusConnectionClosedSignal(socket)
+		fullCloseConn(socket)
 		return
 	} else if errors.Is(err, syscall.ECONNRESET) {
 		// Verbindung wurde vom Peer zurückgesetzt
@@ -59,34 +58,19 @@ func runningBackgroundServingLoop(ipcc *BngConn) bool {
 
 // Gibt an ob eine Verbinding geschlossen wurde
 func connectionIsClosed(ipcc *BngConn) bool {
-	if ipcc.closed.Get() {
-		return true
-	}
-	if ipcc.closing.Get() {
-		return true
-	}
-	if ipcc.runningError.Get() != nil {
-		return true
-	}
-	return false
-}
-
-// Wird verwendet um mitzuteilen dass die Verbindung getrennt wurde
-func consensusConnectionClosedSignal(o *BngConn) {
-	// Es wird geprüft ob beretis ein Fehler vorhanden ist
-	if connectionIsClosed(o) {
-		fmt.Println("IS_CLOSED")
-		return
-	}
-
-	fmt.Println("FULL_CLOSER")
-
-	// Die Verbindung wird geschlossen, mögliche Fehler werden dabei Ignoriert
-	fullCloseConn(o)
+	result := bool(
+		ipcc.closed.Get() &&
+			ipcc.closing.Get() &&
+			ipcc.runningError.Get() != nil)
+	return result
 }
 
 // Wird verwendet um den Socket vollständig zu schlißene
 func fullCloseConn(s *BngConn) error {
+	if connectionIsClosed(s) {
+		return io.EOF
+	}
+
 	// DEBUG
 	defer DebugPrint("Connection closed")
 

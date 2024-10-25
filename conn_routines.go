@@ -11,6 +11,9 @@ func constantReading(o *BngConn) {
 	defer func() {
 		// DEBUG Log
 		DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was stopped", o._innerhid))
+
+		// Es wird eine Hintergrundaufgabe für erledigt Markeirt
+		o.backgroundProcesses.Done()
 	}()
 
 	// Der Buffer Reader ließt die Daten und speichert sie dann im Cache
@@ -113,7 +116,7 @@ func constantWriting(o *BngConn) {
 		DebugPrint(fmt.Sprintf("BngConn(%s): Constant writing to Socket was stopped", o._innerhid))
 
 		// Wird am ende der Lesefunktion aufgerufen
-		defer o.backgroundProcesses.Done()
+		o.backgroundProcesses.Done()
 	}()
 
 	// Der Writer wird erstellt
@@ -148,7 +151,6 @@ func constantWriting(o *BngConn) {
 			// Es wird geprüft ob die Verbindung getrennt wurde
 			if connectionIsClosed(o) {
 				// Der Fehler wird verarbeitet
-				consensusConnectionClosedSignal(o)
 				break
 			}
 
@@ -192,8 +194,6 @@ func constantWriting(o *BngConn) {
 
 		// Es wird geprüft ob die Verbindung getrennt wurde
 		if connectionIsClosed(o) {
-			// Der Fehler wird verarbeitet
-			consensusConnectionClosedSignal(o)
 			break
 		}
 
