@@ -7,25 +7,79 @@ import (
 	"syscall"
 )
 
+// Wird bei einem IO EOF Socket Fehler ausgeführt
+func connIoEOFError(socket *BngConn) {
+	// Es wird geprüft ob die Verbindung bereits geschlossen wurde
+	if connectionIsClosed(socket) {
+		return
+	}
+
+	// Die Verbindung wird als geschlossen Markeirt
+	if socket.closed.Set(true) != 1 {
+		return
+	}
+
+	// Der Fehler wird zwischengespeichert
+	if socket.runningError.Set(io.EOF) != 1 {
+		return
+	}
+
+	// DEBUG
+	DebugPrint("Connection closed")
+
+	// Es werden alle Channel Listener Geschlossen
+	for socket.openChannelListener.Count() != 0 {
+		// Das Item wird Extrahiert
+		value, found := socket.openChannelListener.PopFirst()
+		if !found {
+			break
+		}
+
+		// Der Channel wird geschlossen
+		value.Close()
+	}
+
+	// Es werden alle Channel Listener Anfragen geschlossen
+	for socket.openChannelJoinProcesses.Count() != 0 {
+		// Das Item wird Extrahiert
+		value, found := socket.openChannelJoinProcesses.PopFirst()
+		if !found {
+			break
+		}
+
+		// Der Vorgang wird verworfen
+		close(value)
+	}
+
+	// Es werden alle Offenen Channel geschlossen
+	for socket.openChannelInstances.Count() != 0 {
+		// Das Item wird Extrahiert
+		value, found := socket.openChannelInstances.PopFirst()
+		if !found {
+			break
+		}
+
+		// Der Vorgang wird verworfen
+		value.Close()
+	}
+
+	// Es werden alle ausgehenden RPC Anfragen geschlossen
+	for socket.openRpcRequests.Count() != 0 {
+
+	}
+}
+
 // Wird verwenet um beim Lessevorgang auf Fehler zu Reagieren
 func readProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
-		go fullCloseConn(socket)
-		fmt.Println("readProcessErrorHandling_E")
-		return
+		connIoEOFError(socket)
 	} else if errors.Is(err, syscall.ECONNRESET) {
-		// Verbindung wurde vom Peer zurückgesetzt
 		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
-		return
 	} else if errors.Is(err, syscall.EPIPE) {
-		// Verbindung wurde vom Peer zurückgesetzt
 		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
-		return
 	} else {
-		// Verbindung wurde vom Peer zurückgesetzt
 		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
-		return
 	}
 }
 
@@ -33,21 +87,13 @@ func readProcessErrorHandling(socket *BngConn, err error) {
 func writeProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
-		// Die Verbindung wurde getrennt (EOF)
-		fullCloseConn(socket)
-		return
+		connIoEOFError(socket)
 	} else if errors.Is(err, syscall.ECONNRESET) {
-		// Verbindung wurde vom Peer zurückgesetzt
 		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
-		return
 	} else if errors.Is(err, syscall.EPIPE) {
-		// Verbindung wurde vom Peer zurückgesetzt
 		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
-		return
 	} else {
-		// Verbindung wurde vom Peer zurückgesetzt
 		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
-		return
 	}
 }
 
@@ -58,11 +104,16 @@ func runningBackgroundServingLoop(ipcc *BngConn) bool {
 
 // Gibt an ob eine Verbinding geschlossen wurde
 func connectionIsClosed(ipcc *BngConn) bool {
-	result := bool(
-		ipcc.closed.Get() &&
-			ipcc.closing.Get() &&
-			ipcc.runningError.Get() != nil)
-	return result
+	if ipcc.closed.Get() {
+		return true
+	}
+	if ipcc.closing.Get() {
+		return true
+	}
+	if ipcc.runningError.Get() != nil {
+		return true
+	}
+	return false
 }
 
 // Wird verwendet um den Socket vollständig zu schlißene
@@ -78,17 +129,12 @@ func fullCloseConn(s *BngConn) error {
 	s.closing.Set(true)
 
 	// Der Socket wird geschlossen
-	s.mu.Lock()
+	s.connMutex.Lock()
 	closeerr := s.conn.Close()
-	s.mu.Unlock()
-
-	// Der Writeable Chan wird geschlossen
-	s.writingChan.Destroy()
+	s.connMutex.Unlock()
 
 	// Es wird gewartet dass alle Hintergrundaufgaben abgeschlossen werden
-	fmt.Println("WAIT OF END")
 	s.backgroundProcesses.Wait()
-	fmt.Println("ENDL_WAIT")
 
 	// Es wird Signalisiert, dass die Verbindung final geschlossen wurde
 	s.closed.Set(true)

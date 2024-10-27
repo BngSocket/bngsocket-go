@@ -1,23 +1,12 @@
 package bngsocket
 
 import (
+	"bufio"
 	"bytes"
 	"net"
 	"reflect"
 	"sync"
 )
-
-// writingState speichert den aktuellen Schreibstatus, einschließlich der Anzahl der geschriebenen Bytes und eines möglichen Fehlers.
-type writingState struct {
-	n   int   // Anzahl der erfolgreich geschriebenen Bytes
-	err error // Fehler, der während des Schreibvorgangs aufgetreten ist
-}
-
-// dataWritingResolver hält die zu schreibenden Daten und einen Kanal für die Statusrückmeldung.
-type dataWritingResolver struct {
-	data          []byte             // Die zu schreibenden Daten
-	waitOfResolve chan *writingState // Kanal für die Rückmeldung des Schreibstatus
-}
 
 // DataItem repräsentiert einen einzelnen Datensatz mit einer eindeutigen ID und den zugehörigen Daten.
 type _DataItem struct {
@@ -38,17 +27,23 @@ type ByteCache struct {
 
 // BngConn stellt die Verbindung und den Status eines BNG (Broadband Network Gateway) dar.
 type BngConn struct {
-	_innerhid                string
-	mu                       *sync.Mutex                                   // Mutex für den allgemeinen Zugriffsschutz
-	conn                     net.Conn                                      // Socket-Verbindung des BNG
-	closed                   SafeBool                                      // Flag, das angibt, ob der Socket geschlossen wurde
-	closing                  SafeBool                                      // Flag, das angibt, ob der Socket geschlossen werden soll
-	functions                SafeMap[string, reflect.Value]                // Speichert die registrierten Funktionen
-	runningError             SafeValue[error]                              // Speichert Fehler, die während des Betriebs auftreten
-	writingChan              *SafeChan[*dataWritingResolver]               // Kanal für sendbare Daten
-	openRpcRequests          SafeMap[string, chan *RpcResponse]            // Speichert alle offenen RPC-Anfragen
-	hiddenFunctions          SafeMap[string, reflect.Value]                // Speichert die versteckten (geteilten) Funktionen
-	backgroundProcesses      *sync.WaitGroup                               // Wartet auf laufende Hintergrundprozesse
+	_innerhid string
+	// Speichert alle Verbindungs Variabeln ab
+	conn      net.Conn // Socket-Verbindung des BNG
+	connMutex *sync.Mutex
+	// Speichert den Sitzungszustand ab
+	closed       SafeBool         // Flag, das angibt, ob der Socket geschlossen wurde
+	closing      SafeBool         // Flag, das angibt, ob der Socket geschlossen werden soll
+	runningError SafeValue[error] // Speichert Fehler, die während des Betriebs auftreten
+	// Speichert alle Writer Variabeln ab
+	writerMutex *sync.Mutex
+	writer      *bufio.Writer // Schreibt Daten in den Stream
+	// Speichert alle RPC Variabeln ab
+	functions           SafeMap[string, reflect.Value]     // Speichert die registrierten Funktionen
+	openRpcRequests     SafeMap[string, chan *RpcResponse] // Speichert alle offenen RPC-Anfragen
+	hiddenFunctions     SafeMap[string, reflect.Value]     // Speichert die versteckten (geteilten) Funktionen
+	backgroundProcesses *sync.WaitGroup                    // Wartet auf laufende Hintergrundprozesse
+	// Speichert alle Channel Variabeln ab
 	openChannelListener      SafeMap[string, *BngConnChannelListener]      // Speichert alle verfügbaren Channel-Listener
 	openChannelInstances     SafeMap[string, *BngConnChannel]              // Speichert alle aktiven Channel-Instanzen
 	openChannelJoinProcesses SafeMap[string, chan *ChannelRequestResponse] // Speichert alle offenen Channel-Join-Prozesse

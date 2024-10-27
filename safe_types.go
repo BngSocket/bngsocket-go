@@ -90,3 +90,26 @@ func (t *SafeMap[X, T]) Load(key X) (T, bool) {
 	conv := r.(T)
 	return conv, true
 }
+
+func (t *SafeMap[X, T]) Count() int {
+	count := 0
+	t.Map.Range(func(key, value any) bool {
+		count++
+		return true // Weitermachen, um alle Elemente zu zählen
+	})
+	return count
+}
+
+func (t *SafeMap[X, T]) PopFirst() (value T, found bool) {
+	found = false
+	// Verwende die Range-Methode, um das erste Element zu finden
+	t.Map.Range(func(k, v any) bool {
+		// Setze das erste gefundene Element und markiere als gefunden
+		value, found = v.(T), true
+		// Entferne das Element aus der Map
+		t.Map.Delete(k)
+		// Rückgabe von false, um die Range-Schleife zu beenden
+		return false
+	})
+	return value, found
+}

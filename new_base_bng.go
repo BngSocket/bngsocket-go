@@ -1,21 +1,25 @@
 package bngsocket
 
 import (
+	"bufio"
+	"net"
 	"reflect"
 	"sync"
 
 	"github.com/google/uuid"
 )
 
-func _NewBaseBngSocketObject() *BngConn {
+func _NewBaseBngSocketObject(socket net.Conn) *BngConn {
 	// Das BngConn Objekt wird erzeugt
 	return &BngConn{
+		conn:                     socket,
+		connMutex:                new(sync.Mutex),
 		_innerhid:                uuid.NewString(),
 		backgroundProcesses:      &sync.WaitGroup{},
-		mu:                       &sync.Mutex{},
 		closed:                   newSafeBool(false),
 		closing:                  newSafeBool(false),
-		writingChan:              NewBufferdSafeChan[*dataWritingResolver](64000),
+		writer:                   bufio.NewWriter(socket),
+		writerMutex:              new(sync.Mutex),
 		functions:                newSafeMap[string, reflect.Value](),
 		hiddenFunctions:          newSafeMap[string, reflect.Value](),
 		openRpcRequests:          SafeMap[string, chan *RpcResponse]{Map: new(sync.Map)},

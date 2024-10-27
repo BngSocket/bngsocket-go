@@ -30,8 +30,6 @@ func constantReading(o *BngConn) {
 		rBytes := make([]byte, 4096)
 		sizeN, err := reader.Read(rBytes)
 		if err != nil {
-			fmt.Println("BREAK END")
-			// Der Fehler wird ausgewertet
 			readProcessErrorHandling(o, err)
 			return
 		}
@@ -106,118 +104,5 @@ func constantReading(o *BngConn) {
 				break
 			}
 		}
-	}
-}
-
-// Schreibt kontinuirlich Chunks sobald verfügbar
-func constantWriting(o *BngConn) {
-	defer func() {
-		// Debug
-		DebugPrint(fmt.Sprintf("BngConn(%s): Constant writing to Socket was stopped", o._innerhid))
-
-		// Wird am ende der Lesefunktion aufgerufen
-		o.backgroundProcesses.Done()
-	}()
-
-	// Der Writer wird erstellt
-	writer := bufio.NewWriter(o.conn)
-
-	// Debug
-	DebugPrint(fmt.Sprintf("BngConn(%s): Constant writing to Socket was started", o._innerhid))
-
-	// Die Schleife empfängt die Daten
-	for runningBackgroundServingLoop(o) {
-		// Es wird auf neue Daten aus dem Chan gewartet
-		data, ok := o.writingChan.Read()
-		if !ok {
-			// Es wird geprüft ob die Verbindung getrennt wurde
-			if connectionIsClosed(o) {
-				break
-			}
-
-			// Es handelt sich um einen Schwerwiegenden Fehler, die Verbindung wird getrennt
-			o._ConsensusProtocolTermination(fmt.Errorf("internal chan error"))
-
-			// Schleife, abbruch
-			break
-		}
-
-		// Daten in Chunks aufteilen
-		chunks := SplitDataIntoChunks(data.data, 4096)
-
-		// Die Chunks werden übertragen
-		writedBytes := uint64(0)
-		for _, chunk := range chunks {
-			// Es wird geprüft ob die Verbindung getrennt wurde
-			if connectionIsClosed(o) {
-				// Der Fehler wird verarbeitet
-				break
-			}
-
-			// Nachrichtentyp 'C' senden
-			err := writer.WriteByte('C')
-			if err != nil {
-				// Der Fehler wird verarbeitet
-				writeProcessErrorHandling(o, err)
-				break
-			}
-			writedBytes = writedBytes + 1
-
-			// Chunk-Länge senden (2 Bytes)
-			length := uint16(len(chunk))
-			lengthBytes := make([]byte, 2)
-			binary.BigEndian.PutUint16(lengthBytes, length)
-			_, err = writer.Write(lengthBytes)
-			if err != nil {
-				// Der Fehler wird verarbeitet
-				writeProcessErrorHandling(o, err)
-				break
-			}
-			writedBytes = writedBytes + uint64(len(chunk))
-
-			// Chunk-Daten senden
-			_, err = writer.Write(chunk)
-			if err != nil {
-				// Der Fehler wird verarbeitet
-				writeProcessErrorHandling(o, err)
-				break
-			}
-
-			// Flush, um sicherzustellen, dass die Daten gesendet werden
-			err = writer.Flush()
-			if err != nil {
-				// Der Fehler wird verarbeitet
-				writeProcessErrorHandling(o, err)
-				break
-			}
-		}
-
-		// Es wird geprüft ob die Verbindung getrennt wurde
-		if connectionIsClosed(o) {
-			break
-		}
-
-		// Nachrichtentyp 'L' senden, um das Ende der Nachricht zu signalisieren
-		err := writer.WriteByte('L')
-		if err != nil {
-			// Der Fehler wird verarbeitet
-			writeProcessErrorHandling(o, err)
-			break
-		}
-		writedBytes = writedBytes + 1
-
-		// Die Übertragung wird fertigestellt
-		err = writer.Flush()
-		if err != nil {
-			// Der Fehler wird verarbeitet
-			writeProcessErrorHandling(o, err)
-			break
-		}
-
-		// Debug
-		DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes writed", o._innerhid, writedBytes))
-
-		// Es wird Signalisiert dass die Übertragung erfolgreich war
-		data.waitOfResolve <- &writingState{n: int(int(writedBytes) - 1 - len(chunks)), err: nil}
 	}
 }

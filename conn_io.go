@@ -1,43 +1,103 @@
 package bngsocket
 
 import (
+	"encoding/binary"
 	"fmt"
+	"io"
 
 	"github.com/vmihailenco/msgpack/v5"
 )
 
 // writeBytesIntoChan schreibt ein Byte-Array in den Schreibkanal des angegebenen Sockets.
 // Es gibt einen Fehler zurück, wenn der Socket oder der Schreibkanal nicht verfügbar ist.
-func writeBytesIntoChan(socket *BngConn, data []byte) error {
+func writeBytesIntoChan(o *BngConn, data []byte) error {
 	// Überprüfen, ob der Socket vorhanden ist.
-	if socket == nil {
+	if o == nil {
 		return fmt.Errorf("socket ist null, not allowed")
 	}
 
-	// Überprüfen, ob der Schreibkanal vorhanden ist.
-	if socket.writingChan == nil {
-		return fmt.Errorf("closed write chan")
+	// Daten in Chunks aufteilen
+	chunks := SplitDataIntoChunks(data, 4096)
+
+	// Es wird auf den Mutex gewartet
+	o.writerMutex.Lock()
+	defer o.writerMutex.Unlock()
+
+	// Es wird geprüft ob die Verbindung getrennt wurde
+	if connectionIsClosed(o) {
+		return io.EOF
 	}
 
-	// Einen Kanal für den Schreibstatus erstellen.
-	resolveChan := make(chan *writingState, 1)
-	preparedData := &dataWritingResolver{data: data, waitOfResolve: resolveChan}
+	// Die Chunks werden übertragen
+	writedBytes := uint64(0)
+	for _, chunk := range chunks {
+		// Es wird geprüft ob die Verbindung getrennt wurde
+		if connectionIsClosed(o) {
+			return io.EOF
+		}
 
-	// Die Daten in den Schreibkanal senden.
-	if ok := socket.writingChan.Enter(preparedData); !ok {
-		return fmt.Errorf("writeBytesIntoChan: error by sending data through channel %v", socket.writingChan.IsOpen())
+		// Nachrichtentyp 'C' senden
+		err := o.writer.WriteByte('C')
+		if err != nil {
+			// Der Fehler wird verarbeitet
+			writeProcessErrorHandling(o, err)
+			return err
+		}
+		writedBytes = writedBytes + 1
+
+		// Chunk-Länge senden (2 Bytes)
+		length := uint16(len(chunk))
+		lengthBytes := make([]byte, 2)
+		binary.BigEndian.PutUint16(lengthBytes, length)
+		_, err = o.writer.Write(lengthBytes)
+		if err != nil {
+			// Der Fehler wird verarbeitet
+			writeProcessErrorHandling(o, err)
+			return err
+		}
+		writedBytes = writedBytes + uint64(len(chunk))
+
+		// Chunk-Daten senden
+		_, err = o.writer.Write(chunk)
+		if err != nil {
+			// Der Fehler wird verarbeitet
+			writeProcessErrorHandling(o, err)
+			return err
+		}
+
+		// Flush, um sicherzustellen, dass die Daten gesendet werden
+		err = o.writer.Flush()
+		if err != nil {
+			// Der Fehler wird verarbeitet
+			writeProcessErrorHandling(o, err)
+			return err
+		}
 	}
 
-	// Auf den Status der Sendung warten.
-	resolve := <-resolveChan
-
-	// Überprüfen, ob ein Fehler während des Schreibens aufgetreten ist.
-	if resolve.err != nil {
-		return fmt.Errorf("writeBytesIntoChan: %s", resolve.err.Error())
+	// Es wird geprüft ob die Verbindung getrennt wurde
+	if connectionIsClosed(o) {
+		return io.EOF
 	}
 
-	// Den Kanal schließen, da die Sendung abgeschlossen ist.
-	close(resolveChan)
+	// Nachrichtentyp 'L' senden, um das Ende der Nachricht zu signalisieren
+	err := o.writer.WriteByte('L')
+	if err != nil {
+		// Der Fehler wird verarbeitet
+		writeProcessErrorHandling(o, err)
+		return err
+	}
+	writedBytes = writedBytes + 1
+
+	// Die Übertragung wird fertigestellt
+	err = o.writer.Flush()
+	if err != nil {
+		// Der Fehler wird verarbeitet
+		writeProcessErrorHandling(o, err)
+		return err
+	}
+
+	// Debug
+	DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes writed", o._innerhid, writedBytes))
 
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.
 	return nil

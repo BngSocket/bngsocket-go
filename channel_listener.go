@@ -2,6 +2,7 @@ package bngsocket
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/google/uuid"
@@ -9,14 +10,26 @@ import (
 
 // Accept wartet auf eingehende Channel-Anfragen und registriert eine neue Channel-Sitzung.
 func (o *BngConnChannelListener) Accept() (*BngConnChannel, error) {
+	// Es wird geprüft ob die Verbindung offen ist
+	if connectionIsClosed(o.socket) {
+		return nil, io.EOF
+	}
+
 	// Überprüfen, ob der Acceptor offen ist.
 	if !o.waitOfAccepting.IsOpen() {
+		if connectionIsClosed(o.socket) {
+			return nil, io.EOF
+		}
 		return nil, fmt.Errorf("BngConnChannelListener->Accept[0]: accepting not possible")
 	}
 
 	// Auf neue Acceptor-Anfragen warten.
 	acceptorRequest, ok := o.waitOfAccepting.Read()
 	if !ok {
+		if connectionIsClosed(o.socket) {
+			return nil, io.EOF
+		}
+		fmt.Println(connectionIsClosed(o.socket))
 		return nil, fmt.Errorf("BngConnChannelListener->Accept[1]: cant read from chan")
 	}
 
@@ -26,12 +39,18 @@ func (o *BngConnChannelListener) Accept() (*BngConnChannel, error) {
 	// Eine neue Channel-Sitzung registrieren.
 	channlObject, err := o.socket._RegisterNewChannelSession(id)
 	if err != nil {
+		if connectionIsClosed(o.socket) {
+			return nil, io.EOF
+		}
 		return nil, fmt.Errorf("BngConnChannelListener->BngConnChannel: %s", err.Error())
 	}
 
 	// Die Antwort an den anfragenden Channel zurücksenden.
 	if err := responseNewChannelSession(o.socket, acceptorRequest.requestChannelid, id); err != nil {
 		o.socket._UnregisterChannelSession(id)
+		if connectionIsClosed(o.socket) {
+			return nil, io.EOF
+		}
 		return nil, fmt.Errorf("BngConnChannelListener->Accept: %s", err.Error())
 	}
 
@@ -42,6 +61,9 @@ func (o *BngConnChannelListener) Accept() (*BngConnChannel, error) {
 	_, ok = channlObject.ackChan.Read()
 	if !ok {
 		o.socket._UnregisterChannelSession(id)
+		if connectionIsClosed(o.socket) {
+			return nil, io.EOF
+		}
 		return nil, fmt.Errorf("BngConnChannelListener->Accept: invalid ack recived")
 	}
 
@@ -78,5 +100,7 @@ func (o *BngConnChannelListener) processIncommingSessionRequest(requestChannelId
 // Close schließt den Channel Listener (derzeit ohne Implementierung).
 func (o *BngConnChannelListener) Close() error {
 	// Placeholder für die Schließlogik, derzeit keine Operation.
+	o.waitOfAccepting.Destroy()
+	DebugPrint("BngConnChannelListener: Close")
 	return nil
 }

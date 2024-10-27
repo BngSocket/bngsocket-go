@@ -211,9 +211,9 @@ func (s *BngConn) _ProcessIncommingChannelRequestPackage(channlrequest *ChannelR
 
 // Wird verwendet um eintreffende Channel Request Response Pakete zu verarbeiten
 func (s *BngConn) _ProcessIncommingChannelRequestResponsePackage(channlrequest *ChannelRequestResponse) error {
-	// Der Mutex wird verwendet
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// Der connMutextex wird verwendet
+	s.connMutex.Lock()
+	defer s.connMutex.Unlock()
 
 	// Es wird geprüft ob es einen Offnen Join Vorgang gibt
 	joinProcess, foundJoinProcess := s.openChannelJoinProcesses.Load(channlrequest.ReqId)
@@ -260,9 +260,9 @@ func (s *BngConn) _ProcessIncommingChannelSessionPackage(channlrequest *ChannelS
 
 // Wird verwendet um eintreffende Übermittlungs Bestätigungen für Channel zu verarbeiten
 func (s *BngConn) _ProcessIncommingChannelTransportStateResponsePackage(channlrequest *ChannelTransportStateResponse) error {
-	// Der Mutex wird verwendet
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// Der connMutextex wird verwendet
+	s.connMutex.Lock()
+	defer s.connMutex.Unlock()
 
 	// Es wird geprüft ob es einen offnen Channel gibt,
 	// wenn ja wird das Paket an diesen Weitergereicht,
@@ -289,9 +289,9 @@ func (s *BngConn) _ProcessIncommingChannelTransportStateResponsePackage(channlre
 
 // Wird verwendet um eintreffende Signal Pakete entgegen zu nehmen
 func (s *BngConn) _ProcessIncommingChannelSessionSignal(channlrequest *ChannlSessionTransportSignal) error {
-	// Der Mutex wird verwendet
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// Der connMutextex wird verwendet
+	s.connMutex.Lock()
+	defer s.connMutex.Unlock()
 
 	// Es wird geprüft ob es einen offnen Channel gibt,
 	// wenn ja wird das Paket an diesen Weitergereicht,
@@ -318,9 +318,9 @@ func (s *BngConn) _ProcessIncommingChannelSessionSignal(channlrequest *ChannlSes
 
 // Wird verwendet wenn ein Abweichender Protokoll Fehler auftritt
 func (o *BngConn) _ConsensusProtocolTermination(reason error) {
-	// Der Mutex wird angewenet
-	o.mu.Lock()
-	defer o.mu.Unlock()
+	// Der connMutextex wird angewenet
+	o.connMutex.Lock()
+	defer o.connMutex.Unlock()
 
 	// Es wird geprüft ob beretis ein Fehler vorhanden ist
 	if o.runningError.Get() != nil {
@@ -350,9 +350,9 @@ func (s *BngConn) _RegisterFunction(hidden bool, nameorid string, fn interface{}
 		return fmt.Errorf("bngsocket->_RegisterFunction[0]: " + err.Error())
 	}
 
-	// Der Mutex wird angewendet
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// Der connMutextex wird angewendet
+	s.connMutex.Lock()
+	defer s.connMutex.Unlock()
 
 	// Die Funktion wird Registriert,
 	// Es wird unterschieden zwischen Public und Hidden Funktionen
