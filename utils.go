@@ -12,17 +12,25 @@ import (
 
 // Speichert alle Zulässigen Transportdatentypen ab
 var supportedTypes = map[string]bool{
-	"bool":       true,
-	"string":     true,
-	"map":        true,
-	"slice":      true,
-	"int":        true,
-	"uint":       true,
-	"float":      true,
-	"struct":     true,
-	"func":       true,
-	"ssl/tls":    true,
-	"mutexguard": true,
+	"bool":   true,
+	"string": true,
+	"map":    true,
+	"slice":  true,
+	"int":    true,
+	"uint":   true,
+	"float":  true,
+	"struct": true,
+	"func":   true,
+}
+
+// Speichert alle Explizit Verbotenen Datentypen ab
+var explicitNotAllowDataTypes = map[reflect.Kind]bool{
+	reflect.TypeFor[ByteCache]().Kind():               true,
+	reflect.TypeFor[BngConn]().Kind():                 true,
+	reflect.TypeFor[BngRequest]().Kind():              true,
+	reflect.TypeFor[bngConnAcceptingRequest]().Kind(): true,
+	reflect.TypeFor[BngConnChannelListener]().Kind():  true,
+	reflect.TypeFor[BngConnChannel]().Kind():          true,
 }
 
 // IsErrorType prüft, ob der Typ ein error ist
@@ -83,6 +91,11 @@ func IsValidMessagePackType(t reflect.Type) error {
 			// Structs als Key sind nicht zulässig
 			if isMapKey {
 				return fmt.Errorf("isnt allowed struct as key")
+			}
+
+			// Es wird geprüft ob es sich um ein Verbotenes Struct handelt
+			if found, blocked := explicitNotAllowDataTypes[t.Kind()]; found && blocked {
+				return fmt.Errorf("not allowed struct type")
 			}
 
 			// Es werden alle Getaggeten Daten geprüft
@@ -244,6 +257,12 @@ func ValidateRPCFunction(fnValue reflect.Value, fnType reflect.Type, isRegisterS
 			// Wenn es ein Struct ist, rekursiv alle Felder prüfen
 			if err := IsValidMessagePackType(outType); err != nil {
 				return fmt.Errorf("der erste Rückgabewert enthält ungültige MessagePack-Typen: %w", err)
+			}
+		} else if outType.Kind() == reflect.Func {
+			// Wenn das Feld eine Funktion ist, validiere die RPC-Funktion
+			fieldValue := reflect.New(outType).Elem() // Dummy-Wert für die Funktion erzeugen
+			if err := ValidateRPCFunction(fieldValue, outType, !isRegisterSide); err != nil {
+				return fmt.Errorf("ValidateRPCFunction[7]: Invalid RPC function in field %d: %s", i, err.Error())
 			}
 		} else {
 			// Prüfen, ob der Typ ein Struct ist

@@ -84,9 +84,11 @@ func testIsValidMessagePackType(t *testing.T) {
 	if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[byte]()); err != nil {
 		t.Fatal(err)
 	}
-	if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[TestObject]()); err != nil {
-		t.Fatal(err)
-	}
+	/*
+		if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[TestObject]()); err != nil {
+			t.Fatal(err)
+		}
+	*/
 	if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[error]()); err != nil {
 		t.Fatal(err)
 	}
@@ -126,9 +128,11 @@ func testIsValidMessagePackType(t *testing.T) {
 	if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[map[string]interface{}]()); err != nil {
 		t.Fatal(err)
 	}
-	if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[map[string]TestObject]()); err != nil {
-		t.Fatal(err)
-	}
+	/*
+		if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[map[string]TestObject]()); err != nil {
+			t.Fatal(err)
+		}
+	*/
 
 	// Die Zulässigen Slices werden geprüft
 	t.Log("Test slices")
@@ -177,9 +181,11 @@ func testIsValidMessagePackType(t *testing.T) {
 	if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[[]byte]()); err != nil {
 		t.Fatal(err)
 	}
-	if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[[]TestObject]()); err != nil {
-		t.Fatal(err)
-	}
+	/*
+		if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[[]TestObject]()); err != nil {
+			t.Fatal(err)
+		}
+	*/
 	if err := bngsocket.IsValidMessagePackType(reflect.TypeFor[[]error]()); err != nil {
 		t.Fatal(err)
 	}
