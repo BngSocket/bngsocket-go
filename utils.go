@@ -26,7 +26,7 @@ var supportedTypes = map[string]bool{
 
 // Speichert alle Explizit Verbotenen Datentypen ab
 var explicitNotAllowDataTypes = map[reflect.Kind]bool{
-	reflect.TypeFor[ByteCache]().Kind():               true,
+	reflect.TypeFor[_ByteCache]().Kind():              true,
 	reflect.TypeFor[BngConn]().Kind():                 true,
 	reflect.TypeFor[BngRequest]().Kind():              true,
 	reflect.TypeFor[bngConnAcceptingRequest]().Kind(): true,

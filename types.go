@@ -18,8 +18,8 @@ type _DataItem struct {
 	bytesRead int           // Anzahl der bereits gelesenen Bytes
 }
 
-// ByteCache speichert mehrere Datensätze und ermöglicht das sequenzielle Lesen dieser Daten.
-type ByteCache struct {
+// _ByteCache speichert mehrere Datensätze und ermöglicht das sequenzielle Lesen dieser Daten.
+type _ByteCache struct {
 	dataItems []*_DataItem // Liste von Datensätzen, die im Cache gespeichert sind
 	closed    bool         // Gibt an ob das Objekt geschlossen wurde
 	currentID uint64       // ID für den nächsten hinzuzufügenden Datensatz
@@ -78,7 +78,7 @@ type BngConnChannel struct {
 	currentReadingCache _SafeBytes        // Cache für Daten, die gerade gelesen werden
 	openReaders         _SafeInt          // Zähler für die Anzahl der aktuell offenen Leseoperationen
 	openWriters         _SafeInt          // Zähler für die Anzahl der aktuell offenen Schreiboperationen
-	bytesDataInCache    *ByteCache        // Cache für die eingehenden Daten
+	bytesDataInCache    *_ByteCache       // Cache für die eingehenden Daten
 	ackChan             _SafeAck          // Kanal für ACK-Rückmeldungen
 	channelRunningError _SafeValue[error] // Speichert Fehler ab, welche bei der Verwendung des Channels auftreten können
 	mu                  *sync.Mutex       // Objekt Mutex
