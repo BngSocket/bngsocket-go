@@ -26,9 +26,11 @@ func newSafeInt(v int) SafeInt {
 
 func newSafeValue[T any](v T) SafeValue[T] {
 	DebugPrint(fmt.Sprintf("New Safe Value generated %s", reflect.TypeFor[T]().String()))
+	mutex := new(sync.Mutex)
 	return SafeValue[T]{
 		value:   &v,
-		lock:    new(sync.Mutex),
+		lock:    mutex,
+		cond:    sync.NewCond(mutex),
 		changes: 0,
 	}
 }

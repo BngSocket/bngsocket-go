@@ -14,6 +14,7 @@ type SafeValue[T any] struct {
 	value   *T
 	changes uint64
 	lock    *sync.Mutex
+	cond    *sync.Cond
 }
 
 type SafeInt struct {
@@ -43,10 +44,11 @@ type SafeMap[X any, T any] struct {
 
 func (t *SafeValue[T]) Set(v T) uint64 {
 	t.lock.Lock()
+	defer t.lock.Unlock()
 	t.value = &v
 	t.changes = t.changes + 1
 	newtValue := t.changes
-	t.lock.Unlock()
+	t.cond.Broadcast()
 	return newtValue
 }
 
@@ -55,6 +57,12 @@ func (t *SafeValue[T]) Get() (v T) {
 	v = *t.value
 	t.lock.Unlock()
 	return
+}
+
+func (t *SafeValue[T]) Watch() {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	t.cond.Wait() // Wartet auf Benachrichtigung, dass sich der Wert geändert hat
 }
 
 func (t *SafeInt) Add(val int) {
@@ -113,5 +121,3 @@ func (t *SafeMap[X, T]) PopFirst() (value T, found bool) {
 	})
 	return value, found
 }
-
-// GIT TEST

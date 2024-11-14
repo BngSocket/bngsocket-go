@@ -3,10 +3,14 @@ package bngsocket
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"net"
 	"reflect"
 	"sync"
 )
+
+// Definiere einen Fehler welcher verwendet wird wenn eine Verbindung geschlossen wurde
+var ErrConnectionClosedEOF = errors.New("connection closed EOF")
 
 // DataItem repräsentiert einen einzelnen Datensatz mit einer eindeutigen ID und den zugehörigen Daten.
 type _DataItem struct {

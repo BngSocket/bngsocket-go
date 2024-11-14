@@ -181,14 +181,14 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 
 // Wird verwendet wenn ein Abweichender Protokoll Fehler auftritt
 func (o *BngConn) _ConsensusProtocolTermination(reason error) {
+	// Es wird geprüft ob die Verbindung bereits geschlossen wurde, wenn ja, wird der Vorgang verworfen
+	if connectionIsClosed(o) {
+		return
+	}
+
 	// Der connMutextex wird angewenet
 	o.connMutex.Lock()
 	defer o.connMutex.Unlock()
-
-	// Es wird geprüft ob beretis ein Fehler vorhanden ist
-	if o.runningError.Get() != nil {
-		return
-	}
 
 	// Der Fehler wird geschrieben
 	if reason == nil {

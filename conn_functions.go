@@ -141,6 +141,7 @@ func fullCloseConn(s *BngConn) error {
 
 	// Sollte ein Fehler vorhanden sein, wird dieser Zurückgegeben
 	if closeerr != nil {
+		fmt.Println("AA: " + closeerr.Error())
 		return closeerr
 	}
 

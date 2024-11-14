@@ -51,12 +51,25 @@ func serveConn_ClientSide(conn net.Conn) {
 
 	// Es wird auf Eintreffende Daten gewartet
 	wgt := new(sync.WaitGroup)
-	wgt.Add(1)
+	wgt.Add(2)
+
+	go func() {
+		fmt.Println("Client: Moinitoring gestartet")
+		err := bngsocket.MonitorConnection(upgrConn)
+		if err != nil {
+			if err != bngsocket.ErrConnectionClosedEOF {
+				fmt.Println("Client: Moinitoring ist fehlgeschlagen:" + err.Error())
+			}
+		}
+		fmt.Println("Client: Moinitoring geschlossen")
+		wgt.Done()
+	}()
+
 	go serveChannelConnection_ClientSide(channel, wgt)
 	wgt.Wait()
 }
 
-func serveConn_ServerSide(conn net.Conn) {
+func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 	// Die Verbindung wird geupgradet
 	bngsocket.DebugPrint("Verbindung upgraden")
 	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
@@ -64,6 +77,19 @@ func serveConn_ServerSide(conn net.Conn) {
 		bngsocket.DebugPrint(err.Error())
 		return
 	}
+
+	// Es wird eine Routine gestartet, diese Routine Signalisiert
+	go func() {
+		fmt.Println("Server: Moinitoring gestartet")
+		err := bngsocket.MonitorConnection(upgrConn)
+		if err != nil {
+			if err != bngsocket.ErrConnectionClosedEOF {
+				fmt.Println("Server: Moinitoring ist fehlgeschlagen:" + err.Error())
+			}
+		}
+		fmt.Println("Server: Moinitoring geschlossen")
+		wg.Done()
+	}()
 
 	// Es wird eine ausgehende Verbindung hergestellt
 	channel, err := upgrConn.JoinChannel("test-channel")
@@ -78,6 +104,7 @@ func serveConn_ServerSide(conn net.Conn) {
 		bngsocket.DebugPrint(err.Error())
 		return
 	}
+	upgrConn.Close()
 }
 
 func TestChannelSocket(t *testing.T) {
@@ -85,7 +112,10 @@ func TestChannelSocket(t *testing.T) {
 
 	conn1, conn2 := net.Pipe()
 
-	go serveConn_ServerSide(conn1)
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	go serveConn_ServerSide(conn1, wg)
 	time.Sleep(100 * time.Millisecond)
 	serveConn_ClientSide(conn2)
+	wg.Wait()
 }
