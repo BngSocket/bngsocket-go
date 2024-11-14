@@ -4,45 +4,45 @@ import (
 	"sync"
 )
 
-type SafeChan[T any] struct {
+type _SafeChan[T any] struct {
 	ch     chan T
 	mu     sync.Mutex
 	isOpen bool
 }
 
-type SafeValue[T any] struct {
+type _SafeValue[T any] struct {
 	value   *T
 	changes uint64
 	lock    *sync.Mutex
 	cond    *sync.Cond
 }
 
-type SafeInt struct {
-	SafeValue[int]
+type _SafeInt struct {
+	_SafeValue[int]
 }
 
-type SafeBool struct {
-	SafeValue[bool]
+type _SafeBool struct {
+	_SafeValue[bool]
 }
 
-type SafeBytes struct {
-	SafeValue[[]byte]
+type _SafeBytes struct {
+	_SafeValue[[]byte]
 }
 
-type AckItem struct {
+type _AckItem struct {
 	pid   uint64
 	state uint8
 }
 
-type SafeAck struct {
-	*SafeChan[*AckItem]
+type _SafeAck struct {
+	*_SafeChan[*_AckItem]
 }
 
-type SafeMap[X any, T any] struct {
+type _SafeMap[X any, T any] struct {
 	*sync.Map
 }
 
-func (t *SafeValue[T]) Set(v T) uint64 {
+func (t *_SafeValue[T]) Set(v T) uint64 {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	t.value = &v
@@ -52,20 +52,20 @@ func (t *SafeValue[T]) Set(v T) uint64 {
 	return newtValue
 }
 
-func (t *SafeValue[T]) Get() (v T) {
+func (t *_SafeValue[T]) Get() (v T) {
 	t.lock.Lock()
 	v = *t.value
 	t.lock.Unlock()
 	return
 }
 
-func (t *SafeValue[T]) Watch() {
+func (t *_SafeValue[T]) Watch() {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	t.cond.Wait() // Wartet auf Benachrichtigung, dass sich der Wert geändert hat
 }
 
-func (t *SafeInt) Add(val int) {
+func (t *_SafeInt) Add(val int) {
 	t.lock.Lock()
 	cint := *t.value
 	added := cint + val
@@ -73,7 +73,7 @@ func (t *SafeInt) Add(val int) {
 	t.lock.Unlock()
 }
 
-func (t *SafeInt) Sub(val int) {
+func (t *_SafeInt) Sub(val int) {
 	t.lock.Lock()
 	cint := *t.value
 	subtracted := cint - val
@@ -81,15 +81,15 @@ func (t *SafeInt) Sub(val int) {
 	t.lock.Unlock()
 }
 
-func (t *SafeMap[X, T]) Store(key X, val T) {
+func (t *_SafeMap[X, T]) Store(key X, val T) {
 	t.Map.Store(key, val)
 }
 
-func (t *SafeMap[X, T]) Delete(key X) {
+func (t *_SafeMap[X, T]) Delete(key X) {
 	t.Map.Delete(key)
 }
 
-func (t *SafeMap[X, T]) Load(key X) (T, bool) {
+func (t *_SafeMap[X, T]) Load(key X) (T, bool) {
 	r, ok := t.Map.Load(key)
 	if !ok {
 		var zeroValue T
@@ -99,7 +99,7 @@ func (t *SafeMap[X, T]) Load(key X) (T, bool) {
 	return conv, true
 }
 
-func (t *SafeMap[X, T]) Count() int {
+func (t *_SafeMap[X, T]) Count() int {
 	count := 0
 	t.Map.Range(func(key, value any) bool {
 		count++
@@ -108,7 +108,7 @@ func (t *SafeMap[X, T]) Count() int {
 	return count
 }
 
-func (t *SafeMap[X, T]) PopFirst() (value T, found bool) {
+func (t *_SafeMap[X, T]) PopFirst() (value T, found bool) {
 	found = false
 	// Verwende die Range-Methode, um das erste Element zu finden
 	t.Map.Range(func(k, v any) bool {

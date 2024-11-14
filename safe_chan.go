@@ -5,25 +5,25 @@ import (
 	"reflect"
 )
 
-// NewSafeChan erstellt einen neuen SafeChan mit dem angegebenen Puffer.
-func NewSafeChan[T any]() *SafeChan[T] {
+// NewSafeChan erstellt einen neuen _SafeChan mit dem angegebenen Puffer.
+func NewSafeChan[T any]() *_SafeChan[T] {
 	DebugPrint(fmt.Sprintf("New Safe Chan generated %s", reflect.TypeFor[T]().String()))
-	return &SafeChan[T]{
+	return &_SafeChan[T]{
 		ch:     make(chan T),
 		isOpen: true,
 	}
 }
 
-func NewBufferdSafeChan[T any](buffSize int) *SafeChan[T] {
+func NewBufferdSafeChan[T any](buffSize int) *_SafeChan[T] {
 	DebugPrint(fmt.Sprintf("New Safe Bufferd Chan generated %s", reflect.TypeFor[T]().String()))
-	return &SafeChan[T]{
+	return &_SafeChan[T]{
 		ch:     make(chan T, buffSize),
 		isOpen: true,
 	}
 }
 
 // Enter sendet einen Wert in den Kanal, wenn dieser offen ist.
-func (sc *SafeChan[T]) Enter(value T) bool {
+func (sc *_SafeChan[T]) Enter(value T) bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
@@ -45,7 +45,7 @@ func (sc *SafeChan[T]) Enter(value T) bool {
 }
 
 // Close schließt den Kanal.
-func (sc *SafeChan[T]) Destroy() {
+func (sc *_SafeChan[T]) Destroy() {
 	sc.mu.Lock()
 	sc.isOpen = false
 	close(sc.ch)
@@ -54,23 +54,23 @@ func (sc *SafeChan[T]) Destroy() {
 }
 
 // IsOpen gibt an ob der Chan geschlossen gewurden
-func (sc *SafeChan[T]) IsOpen() bool {
+func (sc *_SafeChan[T]) IsOpen() bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	return sc.isOpen
 }
 
 // GetChannel gibt den Kanal zurück, um Werte zu empfangen.
-func (sc *SafeChan[T]) Read() (T, bool) {
+func (sc *_SafeChan[T]) Read() (T, bool) {
 	// Es wird ein Leehrer Wert erzeugt
 	var nilSafeChanValue T
 
-	// Es wird geprüft ob der SafeChan geschlossen wurde
+	// Es wird geprüft ob der _SafeChan geschlossen wurde
 	if safeCahnIsClosed(sc) {
 		return nilSafeChanValue, false
 	}
 
-	// Es wird entweder auf Daten gewartet oder darauf das der SafeChan geschlossen wird
+	// Es wird entweder auf Daten gewartet oder darauf das der _SafeChan geschlossen wird
 	r, ok := <-sc.ch
 	if !ok {
 		return nilSafeChanValue, false
@@ -80,8 +80,8 @@ func (sc *SafeChan[T]) Read() (T, bool) {
 	return r, true
 }
 
-// Gibt an ob das SafeChan geschlossen wurde
-func safeCahnIsClosed[T any](sc *SafeChan[T]) bool {
+// Gibt an ob das _SafeChan geschlossen wurde
+func safeCahnIsClosed[T any](sc *_SafeChan[T]) bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	if sc.isOpen || sc.ch == nil {

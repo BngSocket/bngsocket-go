@@ -22,10 +22,10 @@ func _NewBaseBngSocketObject(socket net.Conn) *BngConn {
 		writerMutex:              new(sync.Mutex),
 		functions:                newSafeMap[string, reflect.Value](),
 		hiddenFunctions:          newSafeMap[string, reflect.Value](),
-		openRpcRequests:          SafeMap[string, chan *RpcResponse]{Map: new(sync.Map)},
+		openRpcRequests:          _SafeMap[string, chan *RpcResponse]{Map: new(sync.Map)},
 		openChannelListener:      newSafeMap[string, *BngConnChannelListener](),
 		openChannelInstances:     newSafeMap[string, *BngConnChannel](),
-		openChannelJoinProcesses: SafeMap[string, chan *ChannelRequestResponse]{Map: new(sync.Map)},
+		openChannelJoinProcesses: _SafeMap[string, chan *ChannelRequestResponse]{Map: new(sync.Map)},
 		runningError:             newSafeValue[error](nil),
 	}
 }

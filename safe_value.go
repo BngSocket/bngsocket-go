@@ -6,28 +6,28 @@ import (
 	"sync"
 )
 
-func newSafeBool(v bool) SafeBool {
-	return SafeBool{
+func newSafeBool(v bool) _SafeBool {
+	return _SafeBool{
 		newSafeValue(v),
 	}
 }
 
-func newSafeBytes(v []byte) SafeBytes {
-	return SafeBytes{
+func newSafeBytes(v []byte) _SafeBytes {
+	return _SafeBytes{
 		newSafeValue(v),
 	}
 }
 
-func newSafeInt(v int) SafeInt {
-	return SafeInt{
+func newSafeInt(v int) _SafeInt {
+	return _SafeInt{
 		newSafeValue(v),
 	}
 }
 
-func newSafeValue[T any](v T) SafeValue[T] {
+func newSafeValue[T any](v T) _SafeValue[T] {
 	DebugPrint(fmt.Sprintf("New Safe Value generated %s", reflect.TypeFor[T]().String()))
 	mutex := new(sync.Mutex)
-	return SafeValue[T]{
+	return _SafeValue[T]{
 		value:   &v,
 		lock:    mutex,
 		cond:    sync.NewCond(mutex),
@@ -35,14 +35,14 @@ func newSafeValue[T any](v T) SafeValue[T] {
 	}
 }
 
-func newSafeAck() SafeAck {
-	return SafeAck{
-		SafeChan: NewSafeChan[*AckItem](),
+func newSafeAck() _SafeAck {
+	return _SafeAck{
+		_SafeChan: NewSafeChan[*_AckItem](),
 	}
 }
 
-func newSafeMap[X any, T any]() SafeMap[X, T] {
-	return SafeMap[X, T]{
+func newSafeMap[X any, T any]() _SafeMap[X, T] {
+	return _SafeMap[X, T]{
 		Map: new(sync.Map),
 	}
 }

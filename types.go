@@ -3,14 +3,10 @@ package bngsocket
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"net"
 	"reflect"
 	"sync"
 )
-
-// Definiere einen Fehler welcher verwendet wird wenn eine Verbindung geschlossen wurde
-var ErrConnectionClosedEOF = errors.New("connection closed EOF")
 
 // DataItem repräsentiert einen einzelnen Datensatz mit einer eindeutigen ID und den zugehörigen Daten.
 type _DataItem struct {
@@ -36,21 +32,21 @@ type BngConn struct {
 	conn      net.Conn // Socket-Verbindung des BNG
 	connMutex *sync.Mutex
 	// Speichert den Sitzungszustand ab
-	closed       SafeBool         // Flag, das angibt, ob der Socket geschlossen wurde
-	closing      SafeBool         // Flag, das angibt, ob der Socket geschlossen werden soll
-	runningError SafeValue[error] // Speichert Fehler, die während des Betriebs auftreten
+	closed       _SafeBool         // Flag, das angibt, ob der Socket geschlossen wurde
+	closing      _SafeBool         // Flag, das angibt, ob der Socket geschlossen werden soll
+	runningError _SafeValue[error] // Speichert Fehler, die während des Betriebs auftreten
 	// Speichert alle Writer Variabeln ab
 	writerMutex *sync.Mutex
 	writer      *bufio.Writer // Schreibt Daten in den Stream
 	// Speichert alle RPC Variabeln ab
-	functions           SafeMap[string, reflect.Value]     // Speichert die registrierten Funktionen
-	openRpcRequests     SafeMap[string, chan *RpcResponse] // Speichert alle offenen RPC-Anfragen
-	hiddenFunctions     SafeMap[string, reflect.Value]     // Speichert die versteckten (geteilten) Funktionen
-	backgroundProcesses *sync.WaitGroup                    // Wartet auf laufende Hintergrundprozesse
+	functions           _SafeMap[string, reflect.Value]     // Speichert die registrierten Funktionen
+	openRpcRequests     _SafeMap[string, chan *RpcResponse] // Speichert alle offenen RPC-Anfragen
+	hiddenFunctions     _SafeMap[string, reflect.Value]     // Speichert die versteckten (geteilten) Funktionen
+	backgroundProcesses *sync.WaitGroup                     // Wartet auf laufende Hintergrundprozesse
 	// Speichert alle Channel Variabeln ab
-	openChannelListener      SafeMap[string, *BngConnChannelListener]      // Speichert alle verfügbaren Channel-Listener
-	openChannelInstances     SafeMap[string, *BngConnChannel]              // Speichert alle aktiven Channel-Instanzen
-	openChannelJoinProcesses SafeMap[string, chan *ChannelRequestResponse] // Speichert alle offenen Channel-Join-Prozesse
+	openChannelListener      _SafeMap[string, *BngConnChannelListener]      // Speichert alle verfügbaren Channel-Listener
+	openChannelInstances     _SafeMap[string, *BngConnChannel]              // Speichert alle aktiven Channel-Instanzen
+	openChannelJoinProcesses _SafeMap[string, chan *ChannelRequestResponse] // Speichert alle offenen Channel-Join-Prozesse
 }
 
 // BngRequest stellt eine Anfrage an eine BNG-Verbindung dar.
@@ -66,22 +62,22 @@ type bngConnAcceptingRequest struct {
 
 // BngConnChannelListener hört auf eingehende Verbindungen für einen spezifischen BNG-Channel.
 type BngConnChannelListener struct {
-	mu              *sync.Mutex                         // Mutex für den Zugriffsschutz auf den Listener
-	socket          *BngConn                            // Verweis auf die BNG-Verbindung
-	waitOfAccepting *SafeChan[*bngConnAcceptingRequest] // Kanal für akzeptierte Channel-Anfragen
+	mu              *sync.Mutex                          // Mutex für den Zugriffsschutz auf den Listener
+	socket          *BngConn                             // Verweis auf die BNG-Verbindung
+	waitOfAccepting *_SafeChan[*bngConnAcceptingRequest] // Kanal für akzeptierte Channel-Anfragen
 }
 
 // BngConnChannel repräsentiert einen Channel für die Kommunikation über eine BNG-Verbindung.
 type BngConnChannel struct {
-	socket              *BngConn         // Speichert die BNG-Verbindung, über die dieser Channel läuft
-	sesisonId           string           // Aktuelle Session-ID für den Channel
-	isClosed            SafeBool         // Flag, das angibt, ob der Channel geschlossen wurde
-	waitOfPackageACK    SafeBool         // Flag, das angibt, ob auf ein ACK-Paket gewartet wird
-	currentReadingCache SafeBytes        // Cache für Daten, die gerade gelesen werden
-	openReaders         SafeInt          // Zähler für die Anzahl der aktuell offenen Leseoperationen
-	openWriters         SafeInt          // Zähler für die Anzahl der aktuell offenen Schreiboperationen
-	bytesDataInCache    *ByteCache       // Cache für die eingehenden Daten
-	ackChan             SafeAck          // Kanal für ACK-Rückmeldungen
-	channelRunningError SafeValue[error] // Speichert Fehler ab, welche bei der Verwendung des Channels auftreten können
-	mu                  *sync.Mutex      // Objekt Mutex
+	socket              *BngConn          // Speichert die BNG-Verbindung, über die dieser Channel läuft
+	sesisonId           string            // Aktuelle Session-ID für den Channel
+	isClosed            _SafeBool         // Flag, das angibt, ob der Channel geschlossen wurde
+	waitOfPackageACK    _SafeBool         // Flag, das angibt, ob auf ein ACK-Paket gewartet wird
+	currentReadingCache _SafeBytes        // Cache für Daten, die gerade gelesen werden
+	openReaders         _SafeInt          // Zähler für die Anzahl der aktuell offenen Leseoperationen
+	openWriters         _SafeInt          // Zähler für die Anzahl der aktuell offenen Schreiboperationen
+	bytesDataInCache    *ByteCache        // Cache für die eingehenden Daten
+	ackChan             _SafeAck          // Kanal für ACK-Rückmeldungen
+	channelRunningError _SafeValue[error] // Speichert Fehler ab, welche bei der Verwendung des Channels auftreten können
+	mu                  *sync.Mutex       // Objekt Mutex
 }

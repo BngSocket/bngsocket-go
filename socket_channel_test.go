@@ -1,4 +1,4 @@
-package tests
+package bngsocket
 
 import (
 	"fmt"
@@ -7,16 +7,14 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/CustodiaJS/bngsocket"
 )
 
-func serveChannelConnection_ClientSide(channel *bngsocket.BngConnChannel, wgt *sync.WaitGroup) {
+func serveChannelConnection_ClientSide(channel *BngConnChannel, wgt *sync.WaitGroup) {
 	// Es wird auf die Eintreffenden Daten gewartet
 	readed := make([]byte, 1024)
 	n, err := channel.Read(readed)
 	if err != nil {
-		bngsocket.DebugPrint(err.Error())
+		DebugPrint(err.Error())
 		os.Exit(1)
 	}
 
@@ -28,24 +26,24 @@ func serveChannelConnection_ClientSide(channel *bngsocket.BngConnChannel, wgt *s
 
 func serveConn_ClientSide(conn net.Conn) {
 	// Die Verbindung wird geupgradet
-	bngsocket.DebugPrint("Verbindung upgraden")
-	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
+	DebugPrint("Verbindung upgraden")
+	upgrConn, err := UpgradeSocketToBngConn(conn)
 	if err != nil {
-		bngsocket.DebugPrint(err.Error())
+		DebugPrint(err.Error())
 		os.Exit(1)
 	}
 
 	// Es wird ein neuer Channel erzeugt
 	listener, err := upgrConn.OpenChannelListener("test-channel")
 	if err != nil {
-		bngsocket.DebugPrint(err.Error())
+		DebugPrint(err.Error())
 		os.Exit(1)
 	}
 
 	// Es wird auf neue Verbindungen gewartet
 	channel, err := listener.Accept()
 	if err != nil {
-		bngsocket.DebugPrint(err.Error())
+		DebugPrint(err.Error())
 		os.Exit(1)
 	}
 
@@ -55,9 +53,9 @@ func serveConn_ClientSide(conn net.Conn) {
 
 	go func() {
 		fmt.Println("Client: Moinitoring gestartet")
-		err := bngsocket.MonitorConnection(upgrConn)
+		err := MonitorConnection(upgrConn)
 		if err != nil {
-			if err != bngsocket.ErrConnectionClosedEOF {
+			if err != ErrConnectionClosedEOF {
 				fmt.Println("Client: Moinitoring ist fehlgeschlagen:" + err.Error())
 			}
 		}
@@ -71,19 +69,19 @@ func serveConn_ClientSide(conn net.Conn) {
 
 func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 	// Die Verbindung wird geupgradet
-	bngsocket.DebugPrint("Verbindung upgraden")
-	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
+	DebugPrint("Verbindung upgraden")
+	upgrConn, err := UpgradeSocketToBngConn(conn)
 	if err != nil {
-		bngsocket.DebugPrint(err.Error())
+		DebugPrint(err.Error())
 		return
 	}
 
 	// Es wird eine Routine gestartet, diese Routine Signalisiert
 	go func() {
 		fmt.Println("Server: Moinitoring gestartet")
-		err := bngsocket.MonitorConnection(upgrConn)
+		err := MonitorConnection(upgrConn)
 		if err != nil {
-			if err != bngsocket.ErrConnectionClosedEOF {
+			if err != ErrConnectionClosedEOF {
 				fmt.Println("Server: Moinitoring ist fehlgeschlagen:" + err.Error())
 			}
 		}
@@ -94,21 +92,21 @@ func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 	// Es wird eine ausgehende Verbindung hergestellt
 	channel, err := upgrConn.JoinChannel("test-channel")
 	if err != nil {
-		bngsocket.DebugPrint(err.Error())
+		DebugPrint(err.Error())
 		return
 	}
 
 	// Es wird ein HalloWelt Paket an den Client gesendet
 	_, err = channel.Write([]byte("HalloWelt"))
 	if err != nil {
-		bngsocket.DebugPrint(err.Error())
+		DebugPrint(err.Error())
 		return
 	}
 	upgrConn.Close()
 }
 
 func TestChannelSocket(t *testing.T) {
-	bngsocket.DebugSetPrintFunction(t.Log)
+	DebugSetPrintFunction(t.Log)
 
 	conn1, conn2 := net.Pipe()
 

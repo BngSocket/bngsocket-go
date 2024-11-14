@@ -315,7 +315,7 @@ func (m *BngConnChannel) enterChannelTransportStateResponseSate(packageId uint64
 	}
 
 	// Es wird geprüft ob der Channel zuletzt das Paket mit der ID abgesendet hat
-	if ok := m.ackChan.Enter(&AckItem{pid: packageId, state: state}); !ok {
+	if ok := m.ackChan.Enter(&_AckItem{pid: packageId, state: state}); !ok {
 		return io.EOF
 	}
 
@@ -357,7 +357,7 @@ func (m *BngConnChannel) enterSignal(signalId uint64) error {
 		}
 
 		// Es wird geprüft ob der Channel zuletzt das Paket mit der ID abgesendet hat
-		if ok := m.ackChan.Enter(&AckItem{pid: 0, state: 0}); !ok {
+		if ok := m.ackChan.Enter(&_AckItem{pid: 0, state: 0}); !ok {
 			return io.EOF
 		}
 	// Es handelt sich um ein nicht nachvollziebares Signal

@@ -28,7 +28,7 @@ func (o *BngConn) processRpcRequest(rpcReq *RpcRequest) error {
 	ctx := &BngRequest{Conn: o}
 
 	// Es wird versucht die Akommenden Funktionsargumente in den Richtigen Datentypen zu unterteilen
-	in, err := ConvertRPCCallParameterBackToGoValues(o, fn, ctx, rpcReq.Params...)
+	in, err := convertRPCCallParameterBackToGoValues(o, fn, ctx, rpcReq.Params...)
 	if err != nil {
 		return fmt.Errorf("processRpcRequest[1]: " + err.Error())
 	}
@@ -80,7 +80,7 @@ func (o *BngConn) processRpcRequest(rpcReq *RpcRequest) error {
 	// Es wird geprüft ob die Rückgabewerte zulässig und korrekt sind
 
 	// Die Daten werden für den Transport vorbereitet
-	preparedValues, err := ProcessRpcGoDataTypeTransportable(o, values...)
+	preparedValues, err := processRpcGoDataTypeTransportable(o, values...)
 	if err != nil {
 		return fmt.Errorf("processRpcRequest: " + err.Error())
 	}
@@ -133,7 +133,7 @@ func (s *BngConn) _RegisterFunction(hidden bool, nameorid string, fn interface{}
 	// Die RPC Funktion wird validiert
 	fnValue := reflect.ValueOf(fn)
 	fnType := fnValue.Type()
-	if err := ValidateRPCFunction(fnValue, fnType, true); err != nil {
+	if err := validateRPCFunction(fnValue, fnType, true); err != nil {
 		return fmt.Errorf("bngsocket->_RegisterFunction[0]: " + err.Error())
 	}
 
@@ -173,12 +173,12 @@ func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []inter
 	}
 
 	// Es wird geprüft ob die Verwendeten Parameter Zulässigen Datentypen sind
-	if err := ValidateRpcParamsDatatypes(false, params...); err != nil {
+	if err := validateRpcParamsDatatypes(false, params...); err != nil {
 		return nil, err
 	}
 
 	// Die Parameter werden umgewandelt
-	convertedParams, err := ProcessRpcGoDataTypeTransportable(s, params...)
+	convertedParams, err := processRpcGoDataTypeTransportable(s, params...)
 	if err != nil {
 		return nil, fmt.Errorf("bngsocket->_CallFunction[0]: " + err.Error())
 	}
@@ -260,7 +260,7 @@ func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []inter
 		// Es werden alle Einträge abgearbeitet
 		returnValues := make([]interface{}, 0)
 		for i := range response.Return {
-			value, err := ProcessRPCCallResponseDataToGoDatatype(response.Return[i], returnDataType[i])
+			value, err := processRPCCallResponseDataToGoDatatype(response.Return[i], returnDataType[i])
 			if err != nil {
 				return nil, fmt.Errorf("bngsocket->_CallFunction[3]: " + err.Error())
 			}

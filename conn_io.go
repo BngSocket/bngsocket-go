@@ -17,7 +17,7 @@ func writeBytesIntoChan(o *BngConn, data []byte) error {
 	}
 
 	// Daten in Chunks aufteilen
-	chunks := SplitDataIntoChunks(data, 4096)
+	chunks := splitDataIntoChunks(data, 4096)
 
 	// Es wird auf den Mutex gewartet
 	o.writerMutex.Lock()
