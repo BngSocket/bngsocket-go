@@ -113,3 +113,5 @@ func (t *SafeMap[X, T]) PopFirst() (value T, found bool) {
 	})
 	return value, found
 }
+
+// GIT TEST
