@@ -6,6 +6,8 @@ import (
 	"net"
 	"reflect"
 	"sync"
+
+	"github.com/CustodiaJS/bngsocket/transport"
 )
 
 // DataItem repräsentiert einen einzelnen Datensatz mit einer eindeutigen ID und den zugehörigen Daten.
@@ -39,14 +41,14 @@ type BngConn struct {
 	writerMutex *sync.Mutex
 	writer      *bufio.Writer // Schreibt Daten in den Stream
 	// Speichert alle RPC Variabeln ab
-	functions           _SafeMap[string, reflect.Value]     // Speichert die registrierten Funktionen
-	openRpcRequests     _SafeMap[string, chan *RpcResponse] // Speichert alle offenen RPC-Anfragen
-	hiddenFunctions     _SafeMap[string, reflect.Value]     // Speichert die versteckten (geteilten) Funktionen
-	backgroundProcesses *sync.WaitGroup                     // Wartet auf laufende Hintergrundprozesse
+	functions           _SafeMap[string, reflect.Value]               // Speichert die registrierten Funktionen
+	openRpcRequests     _SafeMap[string, chan *transport.RpcResponse] // Speichert alle offenen RPC-Anfragen
+	hiddenFunctions     _SafeMap[string, reflect.Value]               // Speichert die versteckten (geteilten) Funktionen
+	backgroundProcesses *sync.WaitGroup                               // Wartet auf laufende Hintergrundprozesse
 	// Speichert alle Channel Variabeln ab
-	openChannelListener      _SafeMap[string, *BngConnChannelListener]      // Speichert alle verfügbaren Channel-Listener
-	openChannelInstances     _SafeMap[string, *BngConnChannel]              // Speichert alle aktiven Channel-Instanzen
-	openChannelJoinProcesses _SafeMap[string, chan *ChannelRequestResponse] // Speichert alle offenen Channel-Join-Prozesse
+	openChannelListener      _SafeMap[string, *BngConnChannelListener]                // Speichert alle verfügbaren Channel-Listener
+	openChannelInstances     _SafeMap[string, *BngConnChannel]                        // Speichert alle aktiven Channel-Instanzen
+	openChannelJoinProcesses _SafeMap[string, chan *transport.ChannelRequestResponse] // Speichert alle offenen Channel-Join-Prozesse
 }
 
 // BngRequest stellt eine Anfrage an eine BNG-Verbindung dar.

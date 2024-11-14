@@ -6,12 +6,13 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/CustodiaJS/bngsocket/transport"
 	"github.com/google/uuid"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Wird verwendet um RPC Anfragen zu verarbeiten
-func processRpcRequest(o *BngConn, rpcReq *RpcRequest) error {
+func processRpcRequest(o *BngConn, rpcReq *transport.RpcRequest) error {
 	// Es wird geprüft ob die gesuchte Zielfunktion vorhanden ist
 	var found bool
 	var fn reflect.Value
@@ -95,7 +96,7 @@ func processRpcRequest(o *BngConn, rpcReq *RpcRequest) error {
 }
 
 // Wird verwendet um ein RPC Response entgegenzunehmen
-func processRpcResponse(o *BngConn, rpcResp *RpcResponse) error {
+func processRpcResponse(o *BngConn, rpcResp *transport.RpcResponse) error {
 	// Es wird geprüft ob es eine Offene Sitzung gibt
 	session, found := o.openRpcRequests.Load(rpcResp.Id)
 	if !found {
@@ -103,7 +104,7 @@ func processRpcResponse(o *BngConn, rpcResp *RpcResponse) error {
 	}
 
 	// Wird verwenet um die Antwort in den Cahn zu schreiben
-	err := func(rpcResp *RpcResponse) (err error) {
+	err := func(rpcResp *transport.RpcResponse) (err error) {
 		defer func() {
 			if r := recover(); r != nil {
 				// Wandelt den Panic-Wert in einen error um
@@ -184,7 +185,7 @@ func _CallFunction(s *BngConn, hiddencall bool, nameorid string, params []interf
 	}
 
 	// Es wird ein RpcRequest Paket erstellt
-	rpcreq := &RpcRequest{
+	rpcreq := &transport.RpcRequest{
 		Type:   "rpcreq",
 		Params: convertedParams,
 		Name:   nameorid,
@@ -199,7 +200,7 @@ func _CallFunction(s *BngConn, hiddencall bool, nameorid string, params []interf
 	}
 
 	// Der Antwort Chan wird erzeugt
-	responseChan := make(chan *RpcResponse)
+	responseChan := make(chan *transport.RpcResponse)
 
 	// Der Response Chan wird zwischengespeichert
 	s.openRpcRequests.Store(rpcreq.Id, responseChan)

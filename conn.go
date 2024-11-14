@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/CustodiaJS/bngsocket/transport"
 	"github.com/google/uuid"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -38,7 +39,7 @@ func (s *BngConn) OpenChannelListener(cahnnelId string) (*BngConnChannelListener
 // Wird verwendet um eine Channel zu öffnen und zu verbinden
 func (s *BngConn) JoinChannel(channelId string) (*BngConnChannel, error) {
 	// Es wird ein RpcRequest Paket erstellt
-	chreq := &ChannelRequest{
+	chreq := &transport.ChannelRequest{
 		Type:               "chreq",
 		RequestId:          strings.ReplaceAll(uuid.NewString(), "-", ""),
 		RequestedChannelId: channelId,
@@ -51,7 +52,7 @@ func (s *BngConn) JoinChannel(channelId string) (*BngConnChannel, error) {
 	}
 
 	// Der Antwort Chan wird erzeugt
-	responseChan := make(chan *ChannelRequestResponse)
+	responseChan := make(chan *transport.ChannelRequestResponse)
 
 	// Der Response Chan wird zwischengespeichert
 	s.openChannelJoinProcesses.Store(chreq.RequestId, responseChan)

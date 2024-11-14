@@ -1,4 +1,4 @@
-package bngsocket
+package transport
 
 type TypeInfo struct {
 	Type string `msgpack:"type"`

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/CustodiaJS/bngsocket/transport"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/google/uuid"
 )
@@ -320,8 +321,8 @@ func validateRpcParamsDatatypes(isRegisterSide bool, params ...interface{}) erro
 }
 
 // Konvertiert die Parameter eines Funktionsaufrufes
-func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) ([]*RpcDataCapsle, error) {
-	newItems := make([]*RpcDataCapsle, 0)
+func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) ([]*transport.RpcDataCapsle, error) {
+	newItems := make([]*transport.RpcDataCapsle, 0)
 	for i, item := range params {
 		// Refelction wird auf 'fn' angewendet
 		fnValue := reflect.ValueOf(item)
@@ -330,22 +331,22 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 		// Der Datentyp wird extrahiert
 		switch fnType.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			newItems = append(newItems, &RpcDataCapsle{Type: "int", Value: item})
+			newItems = append(newItems, &transport.RpcDataCapsle{Type: "int", Value: item})
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			newItems = append(newItems, &RpcDataCapsle{Type: "uint", Value: item})
+			newItems = append(newItems, &transport.RpcDataCapsle{Type: "uint", Value: item})
 		case reflect.Float32, reflect.Float64:
-			newItems = append(newItems, &RpcDataCapsle{Type: "float", Value: item})
+			newItems = append(newItems, &transport.RpcDataCapsle{Type: "float", Value: item})
 		case reflect.Bool:
-			newItems = append(newItems, &RpcDataCapsle{Type: "bool", Value: item})
+			newItems = append(newItems, &transport.RpcDataCapsle{Type: "bool", Value: item})
 		case reflect.String:
-			newItems = append(newItems, &RpcDataCapsle{Type: "string", Value: item})
+			newItems = append(newItems, &transport.RpcDataCapsle{Type: "string", Value: item})
 		case reflect.Slice:
-			newItems = append(newItems, &RpcDataCapsle{Type: "slice", Value: item})
+			newItems = append(newItems, &transport.RpcDataCapsle{Type: "slice", Value: item})
 		case reflect.Map:
-			newItems = append(newItems, &RpcDataCapsle{Type: "map", Value: item})
+			newItems = append(newItems, &transport.RpcDataCapsle{Type: "map", Value: item})
 		case reflect.Ptr:
 			if fnValue.IsNil() {
-				newItems = append(newItems, &RpcDataCapsle{Type: fmt.Sprintf("null-struct:%s", fnType.Elem()), Value: nil})
+				newItems = append(newItems, &transport.RpcDataCapsle{Type: fmt.Sprintf("null-struct:%s", fnType.Elem()), Value: nil})
 			} else {
 				if fnType.Elem().Kind() != reflect.Struct {
 					return nil, fmt.Errorf("convertRPCCallParameters: invalid data type on %d, type %s, x", i, fnType.Elem().Name())
@@ -354,7 +355,7 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 				if err != nil {
 					return nil, fmt.Errorf("convertRPCCallParameters: invalid data type on %d, type %s, b", i, fnType.Elem().Name())
 				}
-				newItems = append(newItems, &RpcDataCapsle{Type: fmt.Sprintf("struct:%s", fnType.Elem()), Value: cborconverted})
+				newItems = append(newItems, &transport.RpcDataCapsle{Type: fmt.Sprintf("struct:%s", fnType.Elem()), Value: cborconverted})
 			}
 		case reflect.Func:
 			// Es wird versucht die Funktion als Hidden Funktion zu Registrieren
@@ -364,7 +365,7 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 			}
 
 			// Es wird ein neuer HiddenSharedFunction eintrag erzeugt
-			hiddenSharedFunctionLink := &RpcHiddenFunction{
+			hiddenSharedFunctionLink := &transport.RpcHiddenFunction{
 				FunctionId: id,
 			}
 
@@ -375,7 +376,7 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 			}
 
 			// Es wird ein neuer RpcDataCaplse erzeugt
-			newItems = append(newItems, &RpcDataCapsle{Type: "func", Value: cborconverted})
+			newItems = append(newItems, &transport.RpcDataCapsle{Type: "func", Value: cborconverted})
 		default:
 			return nil, fmt.Errorf("convertRPCCallParameters: invalid data type on %d, type %s, a", i, fnType.Kind())
 		}
@@ -446,7 +447,7 @@ func processGoValueToRelectType(value any, expectedType reflect.Type, socket *Bn
 		}
 
 		// Deserialisiere die CBOR-Daten in das Struct
-		var rhfunc *RpcHiddenFunction
+		var rhfunc *transport.RpcHiddenFunction
 		err := cbor.Unmarshal(cborData, &rhfunc)
 		if err != nil {
 			return reflect.Value{}, fmt.Errorf("fehler beim Deserialisieren von CBOR-Daten: %v", err)
@@ -478,7 +479,7 @@ func processGoValueToRelectType(value any, expectedType reflect.Type, socket *Bn
 }
 
 // Wandelt RpcDataCapsle zurück in Go Datensätze
-func processRpcDataCapsleToGoValue(value *RpcDataCapsle, expectedType reflect.Type, socket *BngConn) (reflect.Value, error) {
+func processRpcDataCapsleToGoValue(value *transport.RpcDataCapsle, expectedType reflect.Type, socket *BngConn) (reflect.Value, error) {
 	switch expectedType.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return processGoValueToRelectType(value.Value, expectedType, socket)
@@ -506,7 +507,7 @@ func processRpcDataCapsleToGoValue(value *RpcDataCapsle, expectedType reflect.Ty
 }
 
 // Konvertiert übertragene Parameter wirder zurück in Go Werte um
-func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ctx *BngRequest, params ...*RpcDataCapsle) ([]reflect.Value, error) {
+func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ctx *BngRequest, params ...*transport.RpcDataCapsle) ([]reflect.Value, error) {
 	// Parametertypen prüfen und aufbereiten
 	in := make([]reflect.Value, len(params)+1)
 	in[0] = reflect.ValueOf(ctx)
@@ -541,7 +542,7 @@ func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ct
 }
 
 // Wird verwendet um die Rückgabe Daten eines Aufrufes wieder in Go Datentypen zu Konvertieren
-func processRPCCallResponseDataToGoDatatype(rdc *RpcDataCapsle, retunDataType reflect.Type) (interface{}, error) {
+func processRPCCallResponseDataToGoDatatype(rdc *transport.RpcDataCapsle, retunDataType reflect.Type) (interface{}, error) {
 	// Es wird ermnittelt um was für einen Typen es sich handelt
 	val := reflect.ValueOf(rdc.Value)
 	valType := val.Type()

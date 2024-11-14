@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"sync"
+
+	"github.com/CustodiaJS/bngsocket/transport"
 )
 
 // Wird verwendet um eintreffende Channel Request Pakete zu verarbeiten
-func (s *BngConn) _ProcessIncommingChannelRequestPackage(channlrequest *ChannelRequest) error {
+func (s *BngConn) _ProcessIncommingChannelRequestPackage(channlrequest *transport.ChannelRequest) error {
 	// Es wird geprüft ob es einen Offenen Listener für die Angefordnerte ID gibt
 	channelListener, foundListener := s.openChannelListener.Load(channlrequest.RequestedChannelId)
 	if !foundListener {
@@ -32,7 +34,7 @@ func (s *BngConn) _ProcessIncommingChannelRequestPackage(channlrequest *ChannelR
 }
 
 // Wird verwendet um eintreffende Channel Request Response Pakete zu verarbeiten
-func (s *BngConn) _ProcessIncommingChannelRequestResponsePackage(channlrequest *ChannelRequestResponse) error {
+func (s *BngConn) _ProcessIncommingChannelRequestResponsePackage(channlrequest *transport.ChannelRequestResponse) error {
 	// Der connMutextex wird verwendet
 	s.connMutex.Lock()
 	defer s.connMutex.Unlock()
@@ -51,7 +53,7 @@ func (s *BngConn) _ProcessIncommingChannelRequestResponsePackage(channlrequest *
 }
 
 // Wird verwendet um eintreffende Channel Session Data Transport Pakete zu verarbeiten
-func (s *BngConn) _ProcessIncommingChannelSessionPackage(channlrequest *ChannelSessionDataTransport) error {
+func (s *BngConn) _ProcessIncommingChannelSessionPackage(channlrequest *transport.ChannelSessionDataTransport) error {
 	// Es wird geprüft ob die Verbindung geschlossen wurde
 	if s.closed.Get() {
 		return io.EOF
@@ -81,7 +83,7 @@ func (s *BngConn) _ProcessIncommingChannelSessionPackage(channlrequest *ChannelS
 }
 
 // Wird verwendet um eintreffende Übermittlungs Bestätigungen für Channel zu verarbeiten
-func (s *BngConn) _ProcessIncommingChannelTransportStateResponsePackage(channlrequest *ChannelTransportStateResponse) error {
+func (s *BngConn) _ProcessIncommingChannelTransportStateResponsePackage(channlrequest *transport.ChannelTransportStateResponse) error {
 	// Der connMutextex wird verwendet
 	s.connMutex.Lock()
 	defer s.connMutex.Unlock()
@@ -110,7 +112,7 @@ func (s *BngConn) _ProcessIncommingChannelTransportStateResponsePackage(channlre
 }
 
 // Wird verwendet um eintreffende Signal Pakete entgegen zu nehmen
-func (s *BngConn) _ProcessIncommingChannelSessionSignal(channlrequest *ChannlSessionTransportSignal) error {
+func (s *BngConn) _ProcessIncommingChannelSessionSignal(channlrequest *transport.ChannlSessionTransportSignal) error {
 	// Der connMutextex wird verwendet
 	s.connMutex.Lock()
 	defer s.connMutex.Unlock()

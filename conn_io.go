@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/CustodiaJS/bngsocket/transport"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -120,7 +121,7 @@ func convertAndWriteBytesIntoChan(conn *BngConn, data interface{}) error {
 
 // responseUnkownChannel sendet eine Antwort zurück, wenn ein unbekannter Kanal angefordert wurde.
 func responseUnkownChannel(conn *BngConn, sourceId string) error {
-	rt := &ChannelRequestResponse{
+	rt := &transport.ChannelRequestResponse{
 		Type:                "chreqresp",       // Typ der Antwort
 		ReqId:               sourceId,          // ID der Anfrage
 		NotAcceptedByReason: "#unkown_channel", // Grund für die Ablehnung
@@ -137,7 +138,7 @@ func responseUnkownChannel(conn *BngConn, sourceId string) error {
 
 // responseNewChannelSession sendet eine Antwort zurück, wenn eine neue Channel-Sitzung registriert wird.
 func responseNewChannelSession(conn *BngConn, channelRequestId string, channelSessionId string) error {
-	rt := &ChannelRequestResponse{
+	rt := &transport.ChannelRequestResponse{
 		Type:      "chreqresp",      // Typ der Antwort
 		ReqId:     channelRequestId, // ID der Anfrage
 		ChannelId: channelSessionId, // ID der neuen Channel-Sitzung
@@ -154,7 +155,7 @@ func responseNewChannelSession(conn *BngConn, channelRequestId string, channelSe
 
 // responseChannelNotOpen sendet ein Signal zurück, dass der angegebene Channel nicht geöffnet ist.
 func responseChannelNotOpen(conn *BngConn, channelId string) error {
-	rt := &ChannlSessionTransportSignal{
+	rt := &transport.ChannlSessionTransportSignal{
 		Type:             "chsig",   // Typ des Signals
 		ChannelSessionId: channelId, // ID des nicht geöffneten Channels
 		Signal:           0,         // Signalwert (0 bedeutet "nicht geöffnet")
@@ -171,7 +172,7 @@ func responseChannelNotOpen(conn *BngConn, channelId string) error {
 
 // channelDataTransport sendet Daten über einen bestimmten Channel und gibt die Paket-ID und die Größe der Daten zurück.
 func channelDataTransport(socket *BngConn, data []byte, channelSessionId string) (uint64, int, error) {
-	rt := &ChannelSessionDataTransport{
+	rt := &transport.ChannelSessionDataTransport{
 		Type:             "chst",           // Typ der Datenübertragung
 		ChannelSessionId: channelSessionId, // ID der Channel-Sitzung
 		PackageId:        0,                // Paket-ID (wird im weiteren Verlauf gesetzt)
@@ -195,7 +196,7 @@ func channelDataTransport(socket *BngConn, data []byte, channelSessionId string)
 
 // channelWriteACK sendet ein ACK (Acknowledgment) für ein bestimmtes Paket über die BNG-Verbindung.
 func channelWriteACK(conn *BngConn, pid uint64, sessionId string) error {
-	rt := &ChannelTransportStateResponse{
+	rt := &transport.ChannelTransportStateResponse{
 		Type:             "chtsr",   // Typ der ACK-Antwort
 		ChannelSessionId: sessionId, // ID der Channel-Sitzung
 		PackageId:        pid,       // ID des Pakets, für das das ACK gesendet wird
@@ -211,8 +212,8 @@ func channelWriteACK(conn *BngConn, pid uint64, sessionId string) error {
 	return nil
 }
 
-func socketWriteRpcSuccessResponse(conn *BngConn, value []*RpcDataCapsle, id string) error {
-	rt := &RpcResponse{
+func socketWriteRpcSuccessResponse(conn *BngConn, value []*transport.RpcDataCapsle, id string) error {
+	rt := &transport.RpcResponse{
 		Type:   "rpcres",
 		Id:     id,
 		Return: value,
@@ -228,7 +229,7 @@ func socketWriteRpcSuccessResponse(conn *BngConn, value []*RpcDataCapsle, id str
 }
 
 func socketWriteRpcErrorResponse(conn *BngConn, errstr string, id string) error {
-	rt := &RpcResponse{
+	rt := &transport.RpcResponse{
 		Type:  "rpcres",
 		Id:    id,
 		Error: errstr,
@@ -244,7 +245,7 @@ func socketWriteRpcErrorResponse(conn *BngConn, errstr string, id string) error 
 }
 
 func channelWriteCloseSignal(conn *BngConn, channelSessionId string) error {
-	rt := &ChannlSessionTransportSignal{
+	rt := &transport.ChannlSessionTransportSignal{
 		Type:             "chsig",
 		ChannelSessionId: channelSessionId,
 		Signal:           0,
@@ -260,7 +261,7 @@ func channelWriteCloseSignal(conn *BngConn, channelSessionId string) error {
 }
 
 func channelWriteACKForJoin(conn *BngConn, channelSessionId string) error {
-	rt := &ChannlSessionTransportSignal{
+	rt := &transport.ChannlSessionTransportSignal{
 		Type:             "chsig",
 		ChannelSessionId: channelSessionId,
 		Signal:           1,

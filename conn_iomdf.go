@@ -3,13 +3,14 @@ package bngsocket
 import (
 	"fmt"
 
+	"github.com/CustodiaJS/bngsocket/transport"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Nimmt eintreffende Daten entgegen
 func (o *BngConn) _ProcessReadedData(data []byte) {
 	// Dynamisches Unmarshallen in eine map[string]interface{} oder interface{}
-	var typeInfo TypeInfo
+	var typeInfo transport.TypeInfo
 	err := msgpack.Unmarshal(data, &typeInfo)
 	if err != nil {
 		// Aus Sicherheitsgründen wird die Verbindung terminiert
@@ -26,7 +27,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 		switch typeInfo.Type {
 		case "rpcreq":
 			// Der Datensatz wird als RPC Regquest eingelesen
-			var rpcRequest *RpcRequest
+			var rpcRequest *transport.RpcRequest
 			err := msgpack.Unmarshal(data, &rpcRequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
@@ -46,7 +47,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 			}
 		case "rpcres":
 			// Der Datensatz wird als RPC Regquest eingelesen
-			var rpcResponse *RpcResponse
+			var rpcResponse *transport.RpcResponse
 			err := msgpack.Unmarshal(data, &rpcResponse)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
@@ -70,7 +71,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 		switch typeInfo.Type {
 		case "chreq":
 			// Der Datensatz wird ChannelRequest eingelesen
-			var channlrequest *ChannelRequest
+			var channlrequest *transport.ChannelRequest
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
@@ -90,7 +91,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 			}
 		case "chreqresp":
 			// Der Datensatz wird als ChannelRequestResponse eingelesen
-			var channlrequest *ChannelRequestResponse
+			var channlrequest *transport.ChannelRequestResponse
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
@@ -110,7 +111,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 			}
 		case "chst":
 			// Der Datensatz wird als ChannelSessionDataTransport eingelesen
-			var channlrequest *ChannelSessionDataTransport
+			var channlrequest *transport.ChannelSessionDataTransport
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
@@ -130,7 +131,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 			}
 		case "chsig":
 			// Der Datensatz wird als ChannelSessionTransportSignal eingelesen
-			var channlrequest *ChannlSessionTransportSignal
+			var channlrequest *transport.ChannlSessionTransportSignal
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
@@ -150,7 +151,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 			}
 		case "chtsr":
 			// Der Datensatz wird als ChannelTransportStateResponse eingelesen
-			var channlrequest *ChannelTransportStateResponse
+			var channlrequest *transport.ChannelTransportStateResponse
 			err := msgpack.Unmarshal(data, &channlrequest)
 			if err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
