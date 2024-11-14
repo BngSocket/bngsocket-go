@@ -10,7 +10,7 @@ import (
 var _debugMutex *sync.Mutex = new(sync.Mutex)
 var debugFunc func(v ...any)
 
-func DebugPrint(values ...interface{}) {
+func _DebugPrint(values ...interface{}) {
 	_debugMutex.Lock()
 	defer _debugMutex.Unlock()
 	if debugFunc != nil {

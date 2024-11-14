@@ -101,6 +101,6 @@ func (o *BngConnChannelListener) processIncommingSessionRequest(requestChannelId
 func (o *BngConnChannelListener) Close() error {
 	// Placeholder für die Schließlogik, derzeit keine Operation.
 	o.waitOfAccepting.Destroy()
-	DebugPrint("BngConnChannelListener: Close")
+	_DebugPrint("BngConnChannelListener: Close")
 	return nil
 }

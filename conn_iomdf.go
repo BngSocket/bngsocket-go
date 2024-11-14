@@ -37,7 +37,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 			}
 
 			// Das Paket wird weiterverarbeitet
-			if err := o.processRpcRequest(rpcRequest); err != nil {
+			if err := processRpcRequest(o, rpcRequest); err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
 				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[2]: " + err.Error()))
 
@@ -57,7 +57,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 			}
 
 			// Das Paket wird weiterverarbeitet
-			if err := o.processRpcResponse(rpcResponse); err != nil {
+			if err := processRpcResponse(o, rpcResponse); err != nil {
 				// Aus Sicherheitsgründen wird die Verbindung terminiert
 				o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[4]: " + err.Error()))
 

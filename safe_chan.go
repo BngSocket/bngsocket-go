@@ -7,7 +7,7 @@ import (
 
 // NewSafeChan erstellt einen neuen _SafeChan mit dem angegebenen Puffer.
 func NewSafeChan[T any]() *_SafeChan[T] {
-	DebugPrint(fmt.Sprintf("New Safe Chan generated %s", reflect.TypeFor[T]().String()))
+	_DebugPrint(fmt.Sprintf("New Safe Chan generated %s", reflect.TypeFor[T]().String()))
 	return &_SafeChan[T]{
 		ch:     make(chan T),
 		isOpen: true,
@@ -15,7 +15,7 @@ func NewSafeChan[T any]() *_SafeChan[T] {
 }
 
 func NewBufferdSafeChan[T any](buffSize int) *_SafeChan[T] {
-	DebugPrint(fmt.Sprintf("New Safe Bufferd Chan generated %s", reflect.TypeFor[T]().String()))
+	_DebugPrint(fmt.Sprintf("New Safe Bufferd Chan generated %s", reflect.TypeFor[T]().String()))
 	return &_SafeChan[T]{
 		ch:     make(chan T, buffSize),
 		isOpen: true,
@@ -36,7 +36,7 @@ func (sc *_SafeChan[T]) Enter(value T) bool {
 	select {
 	case sc.ch <- value:
 	default:
-		DebugPrint("Chan closed")
+		_DebugPrint("Chan closed")
 		return false
 	}
 
@@ -50,7 +50,7 @@ func (sc *_SafeChan[T]) Destroy() {
 	sc.isOpen = false
 	close(sc.ch)
 	sc.mu.Unlock()
-	DebugPrint(fmt.Sprintf("Safe Chan destroyed %s", reflect.TypeFor[T]().String()))
+	_DebugPrint(fmt.Sprintf("Safe Chan destroyed %s", reflect.TypeFor[T]().String()))
 }
 
 // IsOpen gibt an ob der Chan geschlossen gewurden

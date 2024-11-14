@@ -359,7 +359,7 @@ func processRpcGoDataTypeTransportable(socket *BngConn, params ...interface{}) (
 		case reflect.Func:
 			// Es wird versucht die Funktion als Hidden Funktion zu Registrieren
 			id := uuid.New().String()
-			if err := socket._RegisterFunction(true, id, item); err != nil {
+			if err := _RegisterFunction(socket, true, id, item); err != nil {
 				return nil, fmt.Errorf("bngsocket->RegisterFunction: " + err.Error())
 			}
 

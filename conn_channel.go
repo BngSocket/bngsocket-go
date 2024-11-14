@@ -164,7 +164,7 @@ func (s *BngConn) _RegisterNewChannelSession(channelSessionId string) (*BngConnC
 	s.openChannelInstances.Store(channelSessionId, bngsoc)
 
 	// Debug
-	DebugPrint(fmt.Sprintf("Register new Channel '%s'", channelSessionId))
+	_DebugPrint(fmt.Sprintf("Register new Channel '%s'", channelSessionId))
 
 	// Das Objekt wird zurückgegeben
 	return bngsoc, nil

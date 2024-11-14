@@ -14,7 +14,7 @@ func serveChannelConnection_ClientSide(channel *BngConnChannel, wgt *sync.WaitGr
 	readed := make([]byte, 1024)
 	n, err := channel.Read(readed)
 	if err != nil {
-		DebugPrint(err.Error())
+		_DebugPrint(err.Error())
 		os.Exit(1)
 	}
 
@@ -26,24 +26,24 @@ func serveChannelConnection_ClientSide(channel *BngConnChannel, wgt *sync.WaitGr
 
 func serveConn_ClientSide(conn net.Conn) {
 	// Die Verbindung wird geupgradet
-	DebugPrint("Verbindung upgraden")
+	_DebugPrint("Verbindung upgraden")
 	upgrConn, err := UpgradeSocketToBngConn(conn)
 	if err != nil {
-		DebugPrint(err.Error())
+		_DebugPrint(err.Error())
 		os.Exit(1)
 	}
 
 	// Es wird ein neuer Channel erzeugt
 	listener, err := upgrConn.OpenChannelListener("test-channel")
 	if err != nil {
-		DebugPrint(err.Error())
+		_DebugPrint(err.Error())
 		os.Exit(1)
 	}
 
 	// Es wird auf neue Verbindungen gewartet
 	channel, err := listener.Accept()
 	if err != nil {
-		DebugPrint(err.Error())
+		_DebugPrint(err.Error())
 		os.Exit(1)
 	}
 
@@ -69,10 +69,10 @@ func serveConn_ClientSide(conn net.Conn) {
 
 func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 	// Die Verbindung wird geupgradet
-	DebugPrint("Verbindung upgraden")
+	_DebugPrint("Verbindung upgraden")
 	upgrConn, err := UpgradeSocketToBngConn(conn)
 	if err != nil {
-		DebugPrint(err.Error())
+		_DebugPrint(err.Error())
 		return
 	}
 
@@ -92,14 +92,14 @@ func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 	// Es wird eine ausgehende Verbindung hergestellt
 	channel, err := upgrConn.JoinChannel("test-channel")
 	if err != nil {
-		DebugPrint(err.Error())
+		_DebugPrint(err.Error())
 		return
 	}
 
 	// Es wird ein HalloWelt Paket an den Client gesendet
 	_, err = channel.Write([]byte("HalloWelt"))
 	if err != nil {
-		DebugPrint(err.Error())
+		_DebugPrint(err.Error())
 		return
 	}
 	upgrConn.Close()

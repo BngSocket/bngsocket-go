@@ -25,7 +25,7 @@ func proxyHiddenRpcFunction(s *BngConn, expectedType reflect.Type, hiddenFuncId 
 		}
 
 		// Fügt eine neue Funktion hinzu
-		rpcReturn, callError := s._CallFunction(true, hiddenFuncId, params, reflectTypes)
+		rpcReturn, callError := _CallFunction(s, true, hiddenFuncId, params, reflectTypes)
 
 		// Rückgabewerte initialisieren
 		for i := 0; i < numOut; i++ {

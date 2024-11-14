@@ -11,7 +11,7 @@ import (
 )
 
 // Wird verwendet um RPC Anfragen zu verarbeiten
-func (o *BngConn) processRpcRequest(rpcReq *RpcRequest) error {
+func processRpcRequest(o *BngConn, rpcReq *RpcRequest) error {
 	// Es wird geprüft ob die gesuchte Zielfunktion vorhanden ist
 	var found bool
 	var fn reflect.Value
@@ -95,7 +95,7 @@ func (o *BngConn) processRpcRequest(rpcReq *RpcRequest) error {
 }
 
 // Wird verwendet um ein RPC Response entgegenzunehmen
-func (o *BngConn) processRpcResponse(rpcResp *RpcResponse) error {
+func processRpcResponse(o *BngConn, rpcResp *RpcResponse) error {
 	// Es wird geprüft ob es eine Offene Sitzung gibt
 	session, found := o.openRpcRequests.Load(rpcResp.Id)
 	if !found {
@@ -124,7 +124,7 @@ func (o *BngConn) processRpcResponse(rpcResp *RpcResponse) error {
 }
 
 // Registriert eine Funktion im allgemeien
-func (s *BngConn) _RegisterFunction(hidden bool, nameorid string, fn interface{}) error {
+func _RegisterFunction(s *BngConn, hidden bool, nameorid string, fn interface{}) error {
 	// Es wird geprüft ob die Verbindung getrennt wurde
 	if connectionIsClosed(s) {
 		return io.EOF
@@ -166,7 +166,7 @@ func (s *BngConn) _RegisterFunction(hidden bool, nameorid string, fn interface{}
 }
 
 // Ruft eine Funktion auf der Gegenseite auf
-func (s *BngConn) _CallFunction(hiddencall bool, nameorid string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
+func _CallFunction(s *BngConn, hiddencall bool, nameorid string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
 	// Es wird geprüft ob die Verbindung getrennt wurde
 	if connectionIsClosed(s) {
 		return nil, io.EOF

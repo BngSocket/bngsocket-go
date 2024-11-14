@@ -25,7 +25,7 @@ func connIoEOFError(socket *BngConn) {
 	}
 
 	// DEBUG
-	DebugPrint("Connection closed")
+	_DebugPrint("Connection closed")
 
 	// Es werden alle Channel Listener Geschlossen
 	for socket.openChannelListener.Count() != 0 {
@@ -123,7 +123,7 @@ func fullCloseConn(s *BngConn) error {
 	}
 
 	// DEBUG
-	defer DebugPrint("Connection closed")
+	defer _DebugPrint("Connection closed")
 
 	// Es wird Markiert dass der Socket geschlossen ist
 	s.closing.Set(true)

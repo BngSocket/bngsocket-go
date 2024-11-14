@@ -25,7 +25,7 @@ func newSafeInt(v int) _SafeInt {
 }
 
 func newSafeValue[T any](v T) _SafeValue[T] {
-	DebugPrint(fmt.Sprintf("New Safe Value generated %s", reflect.TypeFor[T]().String()))
+	_DebugPrint(fmt.Sprintf("New Safe Value generated %s", reflect.TypeFor[T]().String()))
 	mutex := new(sync.Mutex)
 	return _SafeValue[T]{
 		value:   &v,

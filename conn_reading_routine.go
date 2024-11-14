@@ -10,7 +10,7 @@ import (
 func constantReading(o *BngConn) {
 	defer func() {
 		// DEBUG Log
-		DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was stopped", o._innerhid))
+		_DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was stopped", o._innerhid))
 
 		// Es wird eine Hintergrundaufgabe für erledigt Markeirt
 		o.backgroundProcesses.Done()
@@ -22,7 +22,7 @@ func constantReading(o *BngConn) {
 	cachedData := make([]byte, 0)
 
 	// Debug
-	DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was started", o._innerhid))
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was started", o._innerhid))
 
 	// Diese Schleife wird Permanent ausgeführt und liest alle Daten ein
 	for runningBackgroundServingLoop(o) {
@@ -91,7 +91,7 @@ func constantReading(o *BngConn) {
 				o.backgroundProcesses.Add(1)
 
 				// Debug
-				DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes was recived", o._innerhid, len(transportBytes)+ics))
+				_DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes was recived", o._innerhid, len(transportBytes)+ics))
 
 				// Die Daten werden durch die GoRoutine verarbeitet
 				go func(data []byte) {

@@ -97,7 +97,7 @@ func writeBytesIntoChan(o *BngConn, data []byte) error {
 	}
 
 	// Debug
-	DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes writed", o._innerhid, writedBytes))
+	_DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes writed", o._innerhid, writedBytes))
 
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.
 	return nil

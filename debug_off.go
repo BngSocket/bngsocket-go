@@ -2,7 +2,7 @@
 
 package bngsocket
 
-func DebugPrint(values ...interface{}) {
+func _DebugPrint(values ...interface{}) {
 }
 
 func DebugSetPrintFunction(v func(v ...any)) {

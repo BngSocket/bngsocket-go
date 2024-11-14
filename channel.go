@@ -263,7 +263,7 @@ func (m *BngConnChannel) processClose(sendSignal bool) error {
 	}
 
 	// Debug
-	DebugPrint("Channel is closed:", m.sesisonId)
+	_DebugPrint("Channel is closed:", m.sesisonId)
 
 	// Es ist Kein Fehler aufgetreten
 	return nil
