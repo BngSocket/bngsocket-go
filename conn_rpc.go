@@ -22,7 +22,10 @@ func processRpcRequest(o *BngConn, rpcReq *transport.RpcRequest) error {
 		fn, found = o.functions.Load(rpcReq.Name)
 	}
 	if !found {
-		return fmt.Errorf("bngsocket->processRpcRequest[0]: unkown function: %s", rpcReq.Name)
+		if err := socketWriteRpcErrorResponse(o, ErrUnkownRpcFunction.Error(), rpcReq.Id); err != nil {
+			return fmt.Errorf("bngsocket->processRpcRequest: " + err.Error())
+		}
+		return nil
 	}
 
 	// Context erstellen und an die Funktion übergeben
@@ -235,7 +238,7 @@ func _CallFunction(s *BngConn, hiddencall bool, nameorid string, params []interf
 		}
 
 		// Der Fehler wird zurückgegeben
-		return nil, fmt.Errorf(response.Error)
+		return nil, processError(response.Error)
 	}
 
 	// Es wird geprüft ob ein Rückgabewert vorhanden ist

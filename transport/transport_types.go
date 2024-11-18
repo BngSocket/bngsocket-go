@@ -17,6 +17,7 @@ type RpcRequest struct {
 	Id     string           `msgpack:"id"`
 }
 
+// RpcResponse wird verwendet um die Antwortdaten zu übertragen
 type RpcResponse struct {
 	Type   string           `msgpack:"type"`
 	Error  string           `msgpack:"error,omitempty"`

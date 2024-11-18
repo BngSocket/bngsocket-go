@@ -109,7 +109,7 @@ func (s *BngConn) CallFunction(name string, params []interface{}, returnDataType
 	// Die Funktion auf der Gegenseite wird aufgerufen
 	data, err := _CallFunction(s, false, name, params, returnDataType)
 	if err != nil {
-		return nil, fmt.Errorf("bngsocket->CallFunction[0]: " + err.Error())
+		return nil, err
 	}
 
 	// Kein Fehler aufgetreten
@@ -156,9 +156,4 @@ func (s *BngConn) SetReadDeadline(t time.Time) error {
 // SetWriteDeadline sets the deadline for future Write calls and any currently-blocked Write call. Even if write times out, it may return n > 0, indicating that some of the data was successfully written. A zero value for t means Write will not time out.
 func (s *BngConn) SetWriteDeadline(t time.Time) error {
 	return s.conn.SetWriteDeadline(t)
-}
-
-// Wird verwendet um eine P2P Verbindung mit der Gegenseite aufzubauen
-func (s *BngConn) OpenP2PConnection() error {
-	return nil
 }

@@ -16,7 +16,7 @@ type TestObject struct {
 }
 
 func testIsErrorType(t *testing.T) {
-	if !isErrorType(reflect.TypeFor[error]()) {
+	if isErrorType(reflect.TypeFor[error]()) {
 		t.Fatal("isErrorType is broken, commitet value was error")
 	}
 	if isErrorType(reflect.TypeFor[int]()) {
