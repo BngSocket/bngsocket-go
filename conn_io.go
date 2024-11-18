@@ -9,9 +9,21 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-// writeBytesIntoChan schreibt ein Byte-Array in den Schreibkanal des angegebenen Sockets.
+// Wird verwendet um zu bestätigen dass ein Packet erfolgreich übertragen wurde
+func writePackConfirmationACK(o *BngConn) error {
+	// Byte senden
+	_, err := conn.Write([]byte{ackType})
+	if err != nil {
+		return fmt.Errorf("error sending ACK/NACK: %w", err)
+	}
+
+	_DebugPrint(fmt.Sprintf("Sent ACK/NACK: %d", ackType))
+	return nil
+}
+
+// writeBytesIntoSocketConn schreibt ein Byte-Array in den Schreibkanal des angegebenen Sockets.
 // Es gibt einen Fehler zurück, wenn der Socket oder der Schreibkanal nicht verfügbar ist.
-func writeBytesIntoChan(o *BngConn, data []byte) error {
+func writeBytesIntoSocketConn(o *BngConn, data []byte) error {
 	// Überprüfen, ob der Socket vorhanden ist.
 	if o == nil {
 		return fmt.Errorf("socket ist null, not allowed")
@@ -30,7 +42,6 @@ func writeBytesIntoChan(o *BngConn, data []byte) error {
 	}
 
 	// Die Chunks werden übertragen
-	writedBytes := uint64(0)
 	for _, chunk := range chunks {
 		// Es wird geprüft ob die Verbindung getrennt wurde
 		if connectionIsClosed(o) {
@@ -44,7 +55,6 @@ func writeBytesIntoChan(o *BngConn, data []byte) error {
 			writeProcessErrorHandling(o, err)
 			return err
 		}
-		writedBytes = writedBytes + 1
 
 		// Chunk-Länge senden (2 Bytes)
 		length := uint16(len(chunk))
@@ -56,7 +66,6 @@ func writeBytesIntoChan(o *BngConn, data []byte) error {
 			writeProcessErrorHandling(o, err)
 			return err
 		}
-		writedBytes = writedBytes + uint64(len(chunk))
 
 		// Chunk-Daten senden
 		_, err = o.writer.Write(chunk)
@@ -87,7 +96,6 @@ func writeBytesIntoChan(o *BngConn, data []byte) error {
 		writeProcessErrorHandling(o, err)
 		return err
 	}
-	writedBytes = writedBytes + 1
 
 	// Die Übertragung wird fertigestellt
 	err = o.writer.Flush()
@@ -98,12 +106,13 @@ func writeBytesIntoChan(o *BngConn, data []byte) error {
 	}
 
 	// Debug
-	_DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes writed", o._innerhid, writedBytes))
+	_DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes writed", o._innerhid, len(data)))
 
 	// Es ist kein Fehler aufgetreten, Rückgabe nil.
 	return nil
 }
 
+// convertAndWriteBytesIntoChan wandelt einen Go Datensatz in Transportable Bytes um
 func convertAndWriteBytesIntoChan(conn *BngConn, data interface{}) error {
 	// Den RpcRequest in Bytes serialisieren.
 	bdata, err := msgpack.Marshal(data)
@@ -112,7 +121,7 @@ func convertAndWriteBytesIntoChan(conn *BngConn, data interface{}) error {
 	}
 
 	// Die Bytes in den Schreibkanal des Sockets schreiben.
-	if err := writeBytesIntoChan(conn, bdata); err != nil {
+	if err := writeBytesIntoSocketConn(conn, bdata); err != nil {
 		return fmt.Errorf("channelWriteACK[1]: %s", err.Error())
 	}
 
@@ -186,7 +195,7 @@ func channelDataTransport(socket *BngConn, data []byte, channelSessionId string)
 	}
 
 	// Die Bytes in den Schreibkanal des Sockets schreiben.
-	if err := writeBytesIntoChan(socket, bdata); err != nil {
+	if err := writeBytesIntoSocketConn(socket, bdata); err != nil {
 		return 0, -1, fmt.Errorf("channelDataTransport[1]: %s", err.Error())
 	}
 
@@ -212,6 +221,7 @@ func channelWriteACK(conn *BngConn, pid uint64, sessionId string) error {
 	return nil
 }
 
+// socketWriteRpcSuccessResponse antwortet auf ein RPC Request mit einem Response
 func socketWriteRpcSuccessResponse(conn *BngConn, value []*transport.RpcDataCapsle, id string) error {
 	rt := &transport.RpcResponse{
 		Type:   "rpcres",
@@ -228,6 +238,7 @@ func socketWriteRpcSuccessResponse(conn *BngConn, value []*transport.RpcDataCaps
 	return nil
 }
 
+// socketWriteRpcErrorResponse sendet ein Fehler auf einen RPC Request
 func socketWriteRpcErrorResponse(conn *BngConn, errstr string, id string) error {
 	rt := &transport.RpcResponse{
 		Type:  "rpcres",
@@ -244,6 +255,7 @@ func socketWriteRpcErrorResponse(conn *BngConn, errstr string, id string) error 
 	return nil
 }
 
+// channelWriteCloseSignal schreibt ein Close Signal an die Gegenseite
 func channelWriteCloseSignal(conn *BngConn, channelSessionId string) error {
 	rt := &transport.ChannlSessionTransportSignal{
 		Type:             "chsig",
@@ -260,6 +272,7 @@ func channelWriteCloseSignal(conn *BngConn, channelSessionId string) error {
 	return nil
 }
 
+// channelWriteACKForJoin bestätigt den Join auf einen Channel
 func channelWriteACKForJoin(conn *BngConn, channelSessionId string) error {
 	rt := &transport.ChannlSessionTransportSignal{
 		Type:             "chsig",

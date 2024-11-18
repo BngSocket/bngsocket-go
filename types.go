@@ -33,6 +33,8 @@ type BngConn struct {
 	// Speichert alle Verbindungs Variabeln ab
 	conn      net.Conn // Socket-Verbindung des BNG
 	connMutex *sync.Mutex
+	ackStatus int8
+	ackCond   *sync.Cond // Synchronisation für ACK/NACK
 	// Speichert den Sitzungszustand ab
 	closed       _SafeBool         // Flag, das angibt, ob der Socket geschlossen wurde
 	closing      _SafeBool         // Flag, das angibt, ob der Socket geschlossen werden soll

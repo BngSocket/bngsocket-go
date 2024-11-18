@@ -11,9 +11,9 @@ import (
 )
 
 func _NewBaseBngSocketObject(socket net.Conn) *BngConn {
-	// Das BngConn Objekt wird erzeugt
-	return &BngConn{
+	bngConn := &BngConn{
 		conn:                     socket,
+		ackStatus:                -1,
 		connMutex:                new(sync.Mutex),
 		_innerhid:                uuid.NewString(),
 		backgroundProcesses:      &sync.WaitGroup{},
@@ -29,4 +29,6 @@ func _NewBaseBngSocketObject(socket net.Conn) *BngConn {
 		openChannelJoinProcesses: _SafeMap[string, chan *transport.ChannelRequestResponse]{Map: new(sync.Map)},
 		runningError:             newSafeValue[error](nil),
 	}
+	bngConn.ackCond = sync.NewCond(bngConn.writerMutex)
+	return bngConn
 }

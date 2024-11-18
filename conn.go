@@ -58,7 +58,7 @@ func (s *BngConn) JoinChannel(channelId string) (*BngConnChannel, error) {
 	s.openChannelJoinProcesses.Store(chreq.RequestId, responseChan)
 
 	// Das Paket wird gesendet
-	if err := writeBytesIntoChan(s, bytedData); err != nil {
+	if err := writeBytesIntoSocketConn(s, bytedData); err != nil {
 		return nil, fmt.Errorf("bngsocket->JoinChannel: " + err.Error())
 	}
 

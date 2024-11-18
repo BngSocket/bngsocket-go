@@ -209,7 +209,7 @@ func _CallFunction(s *BngConn, hiddencall bool, nameorid string, params []interf
 	s.openRpcRequests.Store(rpcreq.Id, responseChan)
 
 	// Das Paket wird gesendet
-	if err := writeBytesIntoChan(s, bytedData); err != nil {
+	if err := writeBytesIntoSocketConn(s, bytedData); err != nil {
 		if connectionIsClosed(s) {
 			return nil, io.EOF
 		}

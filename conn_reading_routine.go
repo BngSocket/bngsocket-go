@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 )
 
 // Ließt Chunks ein und verarbeitet sie weiter
-func constantReading(o *BngConn) {
+func constantReadingLagacy(o *BngConn) {
 	defer func() {
 		// DEBUG Log
 		_DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was stopped", o._innerhid))
@@ -102,6 +103,118 @@ func constantReading(o *BngConn) {
 				// Der Fehler wird ausgewertet
 				readProcessErrorHandling(o, fmt.Errorf("unknown message type: %v", cacheBytes[0]))
 				break
+			}
+		}
+	}
+}
+
+func constantReading(o *BngConn) {
+	cache := make([]byte, 0)        // Zwischenspeicher für empfangene Daten
+	completeData := make([]byte, 0) // Gesamte empfangene Daten
+	buffer := make([]byte, 4096)    // Lesepuffer bleibt bei 4096 Bytes
+
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was started", o._innerhid))
+
+	for runningBackgroundServingLoop(o) {
+		// Direkt vom Socket lesen
+		sizeN, err := o.conn.Read(buffer)
+		if err != nil {
+			readProcessErrorHandling(o, err)
+			return
+		}
+
+		// An Cache anhängen
+		cache = append(cache, buffer[:sizeN]...)
+
+		// Verarbeiten aller vollständigen Nachrichten im Cache
+		for {
+			if len(cache) < 3 { // Mindestens 3 Bytes für Header erforderlich
+				break
+			}
+
+			messageType := cache[0] // Nachrichtentyp bestimmen (0, 1, 2 oder 3)
+			switch messageType {
+			case 0: // ACK
+				_DebugPrint(fmt.Sprintf("BngConn(%s): Received ACK (0)", o._innerhid))
+				cache = cache[1:] // ACK aus dem Cache entfernen
+
+				// Status setzen und Waiting Group signalisieren
+				o.writerMutex.Lock()
+				o.ackStatus = 0    // ACK gesetzt
+				o.ackCond.Signal() // Signal an die Waiting Group
+				o.writerMutex.Unlock()
+			case 1: // NACK
+				_DebugPrint(fmt.Sprintf("BngConn(%s): Received NACK (1)", o._innerhid))
+				cache = cache[1:] // NACK aus dem Cache entfernen
+
+				// Status setzen und Waiting Group signalisieren
+				o.writerMutex.Lock()
+				o.ackStatus = 1    // NACK gesetzt
+				o.ackCond.Signal() // Signal an die Waiting Group
+				o.writerMutex.Unlock()
+			case 2: // CHUNK
+				// Länge des Chunks ermitteln
+				chunkLength := int(binary.BigEndian.Uint16(cache[1:3]))
+				totalLength := 3 + chunkLength // Typ (1) + Länge (2) + Daten
+
+				// Prüfen, ob der gesamte Chunk im Cache ist
+				if len(cache) < totalLength {
+					break // Auf mehr Daten warten
+				}
+
+				// Chunk-Daten extrahieren und anhängen
+				chunkData := cache[3:totalLength]
+				completeData = append(completeData, chunkData...)
+
+				// ACK senden
+				err := sendACK(o.conn, 0) // 0 = ACK
+				if err != nil {
+					readProcessErrorHandling(o, err)
+					return
+				}
+
+				// Verarbeitete Bytes aus dem Cache entfernen
+				cache = cache[totalLength:]
+			case 3: // ABSCHLUSS
+				if len(cache) < 7 { // Typ (1) + CRC32 (4) = 5 Bytes erforderlich
+					break // Auf mehr Daten warten
+				}
+
+				// CRC32-Prüfsumme aus der Nachricht extrahieren
+				receivedCRC := binary.BigEndian.Uint32(cache[1:5])
+				cache = cache[5:] // Typ (1) und CRC32 (4) entfernen
+
+				// Berechnung der CRC32-Prüfsumme der gesammelten Daten
+				calculatedCRC := crc32.ChecksumIEEE(completeData)
+
+				// Vergleich der CRC32-Prüfsummen
+				if calculatedCRC != receivedCRC {
+					readProcessErrorHandling(o, fmt.Errorf("CRC mismatch: expected %08x, got %08x", calculatedCRC, receivedCRC))
+					sendACK(o.conn, 1) // 1 = NACK
+					continue
+				}
+
+				// Gesammelte Daten final verarbeiten
+				err := processCompleteData(o, completeData)
+				if err != nil {
+					readProcessErrorHandling(o, err)
+					sendACK(o.conn, 1) // 1 = NACK
+					return
+				}
+
+				// Abschluss-ACK senden
+				err = sendACK(o.conn, 0) // 0 = ACK für Abschlussnachricht
+				if err != nil {
+					readProcessErrorHandling(o, err)
+					return
+				}
+
+				// Datenpuffer leeren
+				completeData = make([]byte, 0)
+			default: // Unbekannter Nachrichtentyp
+				readProcessErrorHandling(o, fmt.Errorf("unknown message type: %v", messageType))
+				sendACK(o.conn, 1) // 1 = NACK
+				cache = cache[1:]  // Unbekanntes Byte entfernen
 			}
 		}
 	}
