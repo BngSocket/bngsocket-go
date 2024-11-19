@@ -10,14 +10,14 @@ import (
 )
 
 // Wird verwendet um zu bestätigen dass ein Packet erfolgreich übertragen wurde
-func writePackConfirmationACK(o *BngConn) error {
+func writePacketACK(o *BngConn) error {
 	// Byte senden
-	_, err := conn.Write([]byte{ackType})
+	_, err := o.conn.Write([]byte{0})
 	if err != nil {
 		return fmt.Errorf("error sending ACK/NACK: %w", err)
 	}
 
-	_DebugPrint(fmt.Sprintf("Sent ACK/NACK: %d", ackType))
+	_DebugPrint("Sent ACK")
 	return nil
 }
 
