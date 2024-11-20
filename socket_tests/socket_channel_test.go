@@ -6,12 +6,12 @@ import (
 	"os"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/CustodiaJS/bngsocket"
 )
 
 var endlwait = new(sync.WaitGroup)
+var waitOfServerChannel = new(sync.WaitGroup)
 
 func serveChannelConnection_ClientSide(channel *bngsocket.BngConnChannel, wgt *sync.WaitGroup) {
 	// Es wird auf die Eintreffenden Daten gewartet
@@ -34,16 +34,18 @@ func serveConn_ClientSide(conn net.Conn) {
 	fmt.Println("Verbindung upgraden")
 	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("T", err.Error())
 		os.Exit(1)
 	}
 
 	// Es wird ein neuer Channel erzeugt
 	listener, err := upgrConn.OpenChannelListener("test-channel")
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("R", err.Error())
 		os.Exit(1)
 	}
+
+	waitOfServerChannel.Done()
 
 	// Es wird auf neue Verbindungen gewartet
 	channel, err := listener.Accept()
@@ -54,19 +56,7 @@ func serveConn_ClientSide(conn net.Conn) {
 
 	// Es wird auf Eintreffende Daten gewartet
 	wgt := new(sync.WaitGroup)
-	wgt.Add(2)
-
-	go func() {
-		fmt.Println("Client: Moinitoring gestartet")
-		err := bngsocket.MonitorConnection(upgrConn)
-		if err != nil {
-			if err != bngsocket.ErrConnectionClosedEOF {
-				fmt.Println("Client: Moinitoring ist fehlgeschlagen:" + err.Error())
-			}
-		}
-		fmt.Println("Client: Moinitoring geschlossen")
-		wgt.Done()
-	}()
+	wgt.Add(1)
 
 	go serveChannelConnection_ClientSide(channel, wgt)
 	wgt.Wait()
@@ -81,18 +71,7 @@ func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 		return
 	}
 
-	// Es wird eine Routine gestartet, diese Routine Signalisiert
-	go func() {
-		fmt.Println("Server: Moinitoring gestartet")
-		err := bngsocket.MonitorConnection(upgrConn)
-		if err != nil {
-			if err != bngsocket.ErrConnectionClosedEOF {
-				fmt.Println("Server: Moinitoring ist fehlgeschlagen:" + err.Error())
-			}
-		}
-		fmt.Println("Server: Moinitoring geschlossen")
-		wg.Done()
-	}()
+	waitOfServerChannel.Wait()
 
 	// Es wird eine ausgehende Verbindung hergestellt
 	channel, err := upgrConn.JoinChannel("test-channel")
@@ -108,19 +87,21 @@ func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 		return
 	}
 	endlwait.Wait()
-	upgrConn.Close()
 }
 
 func TestChannelSocket(t *testing.T) {
-	bngsocket.DebugSetPrintFunction(t.Log)
+	bngsocket.DebugSetPrintFunction(func(v ...any) {
+		fmt.Println(v...)
+	})
 
-	conn1, conn2 := net.Pipe()
-
-	wg := new(sync.WaitGroup)
-	endlwait.Add(1)
-	wg.Add(1)
-	go serveConn_ServerSide(conn1, wg)
-	time.Sleep(100 * time.Millisecond)
-	serveConn_ClientSide(conn2)
-	wg.Wait()
+	for i := 0; i < 1; i++ {
+		conn1, conn2 := net.Pipe()
+		wg := new(sync.WaitGroup)
+		endlwait.Add(1)
+		wg.Add(1)
+		waitOfServerChannel.Add(1)
+		go serveConn_ServerSide(conn1, wg)
+		serveConn_ClientSide(conn2)
+		wg.Wait()
+	}
 }

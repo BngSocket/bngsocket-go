@@ -133,6 +133,9 @@ func fullCloseConn(s *BngConn) error {
 	closeerr := s.conn.Close()
 	s.connMutex.Unlock()
 
+	// LOG
+	_DebugPrint(fmt.Sprintf("BngConn(%s): CLOSE FULL", s._innerhid))
+
 	// Es wird gewartet dass alle Hintergrundaufgaben abgeschlossen werden
 	s.backgroundProcesses.Wait()
 

@@ -20,6 +20,9 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 		return
 	}
 
+	// LOG
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Enter data: %s", o._innerhid, typeInfo.Type))
+
 	// Dynamische Verarbeitung basierend auf dem Typ des Wertes
 	switch typeInfo.Type {
 	// RPC Pakete

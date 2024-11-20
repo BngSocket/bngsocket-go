@@ -26,102 +26,89 @@ func constantReading(o *BngConn) {
 	}()
 
 	cache := make([]byte, 0) // Zwischenspeicher für empfangene Daten
+	totalRecived := 0
 	_DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was started", o._innerhid))
 
 	for runningBackgroundServingLoop(o) {
 		// Die Daten aus dem Paket werden eingelesen
-		buffer := make([]byte, 4096)
-		sizeN, err := o.conn.Read(buffer)
-		if err != nil {
-			readProcessErrorHandling(o, err)
+		buffer := make([]byte, 41)
+		sizeN, rerr := o.conn.Read(buffer)
+		if rerr != nil {
+			_DebugPrint(fmt.Sprintf("BngConn(%s): Error reading socket: %v", o._innerhid, rerr))
+			readProcessErrorHandling(o, rerr)
 			return
 		}
 
-		// Es wird geprüft ob mindesttens 1 Zeichen auf dem Bzffer liegen
 		if sizeN < 1 {
+			_DebugPrint(fmt.Sprintf("BngConn(%s): Invalid data stream, size < 1", o._innerhid))
 			readProcessErrorHandling(o, fmt.Errorf("invalid data stream"))
 			return
 		}
+		totalRecived += len(buffer[:sizeN])
 
 		switch {
-		case buffer[0] == byte(3):
-			_DebugPrint(fmt.Sprintf("BngConn(%s): flush recived", o._innerhid))
-
-			// Es wird geprüft ob genügend Daten im Cache sind
+		case buffer[0] == byte(3): // Datenabschluss-Paket
+			_DebugPrint(fmt.Sprintf("BngConn(%s): Flush received", o._innerhid))
 			if len(cache) < 5 {
+				_DebugPrint(fmt.Sprintf("BngConn(%s): Cache too small for CRC processing", o._innerhid))
 				readProcessErrorHandling(o, fmt.Errorf("cache too small for CRC processing"))
 				return
 			}
 
-			// Es wird eine CR32 aus dem Cache berechnet
 			dataWithoutCRC := cache[:len(cache)-4]
 			calculatedCRC := crc32.ChecksumIEEE(dataWithoutCRC)
 
-			// CRC32 in Bytes umwandeln
-			crcBytes := make([]byte, 4) // CRC32 ist 4 Bytes groß
+			crcBytes := make([]byte, 4)
 			binary.BigEndian.PutUint32(crcBytes, calculatedCRC)
 
-			// Die CRC wird mit der CRC am ende des Paketes überprüft
 			if !bytes.Equal(crcBytes, cache[len(cache)-4:]) {
+				_DebugPrint(fmt.Sprintf("BngConn(%s): CRC mismatch", o._innerhid))
 				panic("invalid stream")
 			}
 
-			// LOG
-			_DebugPrint(fmt.Sprintf("BngConn(%s): total bytes readed: %d", o._innerhid, len(dataWithoutCRC)))
-
-			// Die Daten werden weiterverabeitet
-			err = processCompleteData(o, dataWithoutCRC)
+			_DebugPrint(fmt.Sprintf("BngConn(%s): Total bytes read: %d", o._innerhid, len(dataWithoutCRC)))
+			err := processCompleteData(o, dataWithoutCRC)
 			if err != nil {
 				_DebugPrint(fmt.Sprintf("BngConn(%s): Error processing final data: %v", o._innerhid, err))
-				writePacketNACK(o) // Bei Fehler ein NACK senden
+				writePacketNACK(o)
 				readProcessErrorHandling(o, err)
 				return
 			}
 
-			// Cache leeren, da die Verarbeitung abgeschlossen ist
+			fmt.Println("TOTAL RECIVED", totalRecived)
 			cache = cache[:0]
-
-			// Es wird ein ACK an die Gegenseite gesendet
+			totalRecived = 0
 			err = writePacketACK(o)
 			if err != nil {
+				_DebugPrint(fmt.Sprintf("BngConn(%s): Error sending ACK: %v", o._innerhid, err))
 				readProcessErrorHandling(o, err)
-				_DebugPrint(fmt.Sprintf("BngConn(%s): Error sending pre-ACK for final message: %v", o._innerhid, err))
 				return
 			}
-		case buffer[0] == byte(2):
-			// Die Daten des Frames werden ohne das Erste Byte (Header) extrahiert und im cache zwischengespeichert
+		case buffer[0] == byte(2): // Datenpaket
 			cache = append(cache, buffer[1:sizeN]...)
+			_DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes frame received", o._innerhid, sizeN))
 
-			// LOG
-			_DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes frame recived", o._innerhid, len(buffer[:sizeN])))
-
-			// Es wird versucht ein ACK an die Gegenseite zurückzusenden
 			err := writePacketACK(o)
 			if err != nil {
+				_DebugPrint(fmt.Sprintf("BngConn(%s): Error sending ACK: %v", o._innerhid, err))
 				readProcessErrorHandling(o, err)
-				_DebugPrint(fmt.Sprintf("BngConn(%s): Error sending pre-ACK for final message: %v", o._innerhid, err))
 				return
 			}
-
-			// Es wird auf den nächsten Datensatz gewartet
-			continue
-		case sizeN == 1:
-			// Es wird geprüft um was es sich genau handelt
+		case sizeN == 1: // Kontrollpaket (ACK/NACK)
 			switch buffer[0] {
-			case 0: // ACK
+			case 0:
 				_DebugPrint(fmt.Sprintf("BngConn(%s): Received ACK", o._innerhid))
 				o.ackHandle.EnterACK()
-				continue
-			case 1: // NACK
+			case 1:
 				_DebugPrint(fmt.Sprintf("BngConn(%s): Received NACK", o._innerhid))
 				o.writerMutex.Lock()
 				o.writerMutex.Unlock()
-				continue
+			default:
+				_DebugPrint(fmt.Sprintf("BngConn(%s): Unknown control packet: %d", o._innerhid, buffer[0]))
 			}
-
-			// Es wird auf den Nächsten Datensatz gewartet
-			continue
 		default:
+			_DebugPrint(fmt.Sprintf("BngConn(%s): Unknown packet type received", o._innerhid))
+			continue
 		}
 	}
 }

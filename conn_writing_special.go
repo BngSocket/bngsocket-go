@@ -43,6 +43,11 @@ func writePacketABORT(o *BngConn) error {
 	return nil
 }
 
+// writeConnectionCloseSignal wird verwendet um zu Signalisiereb, das eine Verbindung geschlossen werden soll
+func writeConnectionCloseSignal(o *BngConn) error {
+	return nil
+}
+
 // convertAndWriteBytesIntoChan wandelt einen Go Datensatz in Transportable Bytes um
 func convertAndWriteBytesIntoChan(conn *BngConn, data interface{}) error {
 	// Den RpcRequest in Bytes serialisieren.

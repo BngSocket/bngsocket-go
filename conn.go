@@ -16,6 +16,10 @@ import (
 
 // Wird verwedet um einen neuen Channel bereitzustellen
 func (s *BngConn) OpenChannelListener(cahnnelId string) (*BngConnChannelListener, error) {
+	// Der Objekt Mutex wird verwendet
+	s.connMutex.Lock()
+	defer s.connMutex.Unlock()
+
 	// Es wird ein neur Listener erzeugt und abgespeichert
 	listener := &BngConnChannelListener{
 		socket:          s,
@@ -31,6 +35,9 @@ func (s *BngConn) OpenChannelListener(cahnnelId string) (*BngConnChannelListener
 
 	// Der Eintrag wird hinzugefügt
 	s.openChannelListener.Store(cahnnelId, listener)
+
+	// LOG
+	_DebugPrint(fmt.Sprintf("BngConn(%s): New Channel Listener: %s", s._innerhid, cahnnelId))
 
 	// Der Listener wird zurückgegeben
 	return listener, nil
@@ -81,6 +88,9 @@ func (s *BngConn) JoinChannel(channelId string) (*BngConnChannel, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bngsocket->JoinChannel: " + chreq.Error)
 	}
+
+	// LOG
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Channel Joined: %s", s._innerhid, channel.sesisonId))
 
 	// Dem Server wird mitgeteilt dass die Verbindung erfolgreich zustande gekommen ist
 	if err := channelWriteACKForJoin(s, response.ChannelId); err != nil {
