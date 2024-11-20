@@ -11,6 +11,8 @@ import (
 	"github.com/CustodiaJS/bngsocket"
 )
 
+var endlwait = new(sync.WaitGroup)
+
 func serveChannelConnection_ClientSide(channel *bngsocket.BngConnChannel, wgt *sync.WaitGroup) {
 	// Es wird auf die Eintreffenden Daten gewartet
 	readed := make([]byte, 1024)
@@ -22,7 +24,8 @@ func serveChannelConnection_ClientSide(channel *bngsocket.BngConnChannel, wgt *s
 
 	// Die Eingetroffenen Daten werden ausgelesen
 	data := readed[:n]
-	fmt.Println(data)
+	fmt.Println(string(data))
+	endlwait.Done()
 	wgt.Done()
 }
 
@@ -99,11 +102,12 @@ func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 	}
 
 	// Es wird ein HalloWelt Paket an den Client gesendet
-	_, err = channel.Write([]byte("HalloWelt"))
+	_, err = channel.Write([]byte("Hallo Welt"))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
+	endlwait.Wait()
 	upgrConn.Close()
 }
 
@@ -113,6 +117,7 @@ func TestChannelSocket(t *testing.T) {
 	conn1, conn2 := net.Pipe()
 
 	wg := new(sync.WaitGroup)
+	endlwait.Add(1)
 	wg.Add(1)
 	go serveConn_ServerSide(conn1, wg)
 	time.Sleep(100 * time.Millisecond)

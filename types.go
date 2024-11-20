@@ -1,7 +1,6 @@
 package bngsocket
 
 import (
-	"bufio"
 	"bytes"
 	"net"
 	"reflect"
@@ -27,21 +26,25 @@ type _ByteCache struct {
 	cond      *sync.Cond   // Bedingungsvariable, um auf das Vorhandensein von Daten zu warten
 }
 
+type _ConnACK struct {
+	cond  *sync.Cond
+	mutex *sync.Mutex
+	state uint8
+}
+
 // BngConn stellt die Verbindung und den Status eines BNG (Broadband Network Gateway) dar.
 type BngConn struct {
 	_innerhid string
 	// Speichert alle Verbindungs Variabeln ab
 	conn      net.Conn // Socket-Verbindung des BNG
+	ackHandle *_ConnACK
 	connMutex *sync.Mutex
-	ackStatus int8
-	ackCond   *sync.Cond // Synchronisation für ACK/NACK
 	// Speichert den Sitzungszustand ab
 	closed       _SafeBool         // Flag, das angibt, ob der Socket geschlossen wurde
 	closing      _SafeBool         // Flag, das angibt, ob der Socket geschlossen werden soll
 	runningError _SafeValue[error] // Speichert Fehler, die während des Betriebs auftreten
 	// Speichert alle Writer Variabeln ab
 	writerMutex *sync.Mutex
-	writer      *bufio.Writer // Schreibt Daten in den Stream
 	// Speichert alle RPC Variabeln ab
 	functions           _SafeMap[string, reflect.Value]               // Speichert die registrierten Funktionen
 	openRpcRequests     _SafeMap[string, chan *transport.RpcResponse] // Speichert alle offenen RPC-Anfragen

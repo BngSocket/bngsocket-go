@@ -1,7 +1,6 @@
 package bngsocket
 
 import (
-	"bufio"
 	"net"
 	"reflect"
 	"sync"
@@ -13,13 +12,12 @@ import (
 func _NewBaseBngSocketObject(socket net.Conn) *BngConn {
 	bngConn := &BngConn{
 		conn:                     socket,
-		ackStatus:                -1,
 		connMutex:                new(sync.Mutex),
 		_innerhid:                uuid.NewString(),
+		ackHandle:                newConnACK(),
 		backgroundProcesses:      &sync.WaitGroup{},
 		closed:                   newSafeBool(false),
 		closing:                  newSafeBool(false),
-		writer:                   bufio.NewWriter(socket),
 		writerMutex:              new(sync.Mutex),
 		functions:                newSafeMap[string, reflect.Value](),
 		hiddenFunctions:          newSafeMap[string, reflect.Value](),
@@ -29,6 +27,5 @@ func _NewBaseBngSocketObject(socket net.Conn) *BngConn {
 		openChannelJoinProcesses: _SafeMap[string, chan *transport.ChannelRequestResponse]{Map: new(sync.Map)},
 		runningError:             newSafeValue[error](nil),
 	}
-	bngConn.ackCond = sync.NewCond(bngConn.writerMutex)
 	return bngConn
 }

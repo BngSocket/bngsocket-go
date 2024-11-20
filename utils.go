@@ -611,17 +611,3 @@ func processRPCCallResponseDataToGoDatatype(rdc *transport.RpcDataCapsle, retunD
 	// Due Werte werden zurückgegeben
 	return rdc.Value, nil
 }
-
-// splitDataIntoChunks teilt die Daten in Chunks der angegebenen Größe auf
-func splitDataIntoChunks(data []byte, chunkSize int) [][]byte {
-	var chunks [][]byte
-	cSize := chunkSize - 3
-	for len(data) > 0 {
-		if len(data) < cSize {
-			cSize = len(data)
-		}
-		chunks = append(chunks, data[:cSize])
-		data = data[cSize:]
-	}
-	return chunks
-}

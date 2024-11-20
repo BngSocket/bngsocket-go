@@ -1,114 +1,45 @@
 package bngsocket
 
 import (
-	"encoding/binary"
 	"fmt"
-	"io"
 
 	"github.com/CustodiaJS/bngsocket/transport"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-// Wird verwendet um zu bestätigen dass ein Packet erfolgreich übertragen wurde
+// writePacketACK wird verwendet um zu bestätigen dass ein Packet erfolgreich übertragen wurde
 func writePacketACK(o *BngConn) error {
 	// Byte senden
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Sent ACK", o._innerhid))
 	_, err := o.conn.Write([]byte{0})
 	if err != nil {
 		return fmt.Errorf("error sending ACK/NACK: %w", err)
 	}
 
-	_DebugPrint("Sent ACK")
 	return nil
 }
 
-// writeBytesIntoSocketConn schreibt ein Byte-Array in den Schreibkanal des angegebenen Sockets.
-// Es gibt einen Fehler zurück, wenn der Socket oder der Schreibkanal nicht verfügbar ist.
-func writeBytesIntoSocketConn(o *BngConn, data []byte) error {
-	// Überprüfen, ob der Socket vorhanden ist.
-	if o == nil {
-		return fmt.Errorf("socket ist null, not allowed")
-	}
-
-	// Daten in Chunks aufteilen
-	chunks := splitDataIntoChunks(data, 4096)
-
-	// Es wird auf den Mutex gewartet
-	o.writerMutex.Lock()
-	defer o.writerMutex.Unlock()
-
-	// Es wird geprüft ob die Verbindung getrennt wurde
-	if connectionIsClosed(o) {
-		return io.EOF
-	}
-
-	// Die Chunks werden übertragen
-	for _, chunk := range chunks {
-		// Es wird geprüft ob die Verbindung getrennt wurde
-		if connectionIsClosed(o) {
-			return io.EOF
-		}
-
-		// Nachrichtentyp 'C' senden
-		err := o.writer.WriteByte('C')
-		if err != nil {
-			// Der Fehler wird verarbeitet
-			writeProcessErrorHandling(o, err)
-			return err
-		}
-
-		// Chunk-Länge senden (2 Bytes)
-		length := uint16(len(chunk))
-		lengthBytes := make([]byte, 2)
-		binary.BigEndian.PutUint16(lengthBytes, length)
-		_, err = o.writer.Write(lengthBytes)
-		if err != nil {
-			// Der Fehler wird verarbeitet
-			writeProcessErrorHandling(o, err)
-			return err
-		}
-
-		// Chunk-Daten senden
-		_, err = o.writer.Write(chunk)
-		if err != nil {
-			// Der Fehler wird verarbeitet
-			writeProcessErrorHandling(o, err)
-			return err
-		}
-
-		// Flush, um sicherzustellen, dass die Daten gesendet werden
-		err = o.writer.Flush()
-		if err != nil {
-			// Der Fehler wird verarbeitet
-			writeProcessErrorHandling(o, err)
-			return err
-		}
-	}
-
-	// Es wird geprüft ob die Verbindung getrennt wurde
-	if connectionIsClosed(o) {
-		return io.EOF
-	}
-
-	// Nachrichtentyp 'L' senden, um das Ende der Nachricht zu signalisieren
-	err := o.writer.WriteByte('L')
+// writePacketACK wird verwendet um zu Signalisieren, das eine Übertragung nicht erfolgreich war
+func writePacketNACK(o *BngConn) error {
+	// Byte senden
+	_, err := o.conn.Write([]byte{1})
 	if err != nil {
-		// Der Fehler wird verarbeitet
-		writeProcessErrorHandling(o, err)
-		return err
+		return fmt.Errorf("error sending ACK/NACK: %w", err)
 	}
 
-	// Die Übertragung wird fertigestellt
-	err = o.writer.Flush()
+	_DebugPrint("Sent NACK")
+	return nil
+}
+
+// writePacketACK wird verwendet um zu Signalisieren, das eine Übertragung nicht erfolgreich war
+func writePacketABORT(o *BngConn) error {
+	// Byte senden
+	_, err := o.conn.Write([]byte{2})
 	if err != nil {
-		// Der Fehler wird verarbeitet
-		writeProcessErrorHandling(o, err)
-		return err
+		return fmt.Errorf("error sending ACK/NACK: %w", err)
 	}
 
-	// Debug
-	_DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes writed", o._innerhid, len(data)))
-
-	// Es ist kein Fehler aufgetreten, Rückgabe nil.
+	_DebugPrint("Sent NACK")
 	return nil
 }
 

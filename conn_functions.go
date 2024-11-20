@@ -83,7 +83,7 @@ func readProcessErrorHandling(socket *BngConn, err error) {
 	}
 }
 
-// Wird verwenet um beim Lessevorgang auf Fehler zu Reagieren
+// Wird verwenet um beim Schreibvorgang auf Fehler zu Reagieren
 func writeProcessErrorHandling(socket *BngConn, err error) {
 	// Der Fehler wird ermittelt
 	if errors.Is(err, io.EOF) {
