@@ -56,7 +56,6 @@ type BngConn struct {
 	// RPC-Variablen
 	functions           _SafeMap[string, reflect.Value]               // Registrierte Funktionen
 	openRpcRequests     _SafeMap[string, chan *transport.RpcResponse] // Offene RPC-Anfragen
-	hiddenFunctions     _SafeMap[string, reflect.Value]               // Versteckte (geteilte) Funktionen
 	backgroundProcesses *sync.WaitGroup                               // Wartet auf laufende Hintergrundprozesse
 
 	// Channel-Variablen

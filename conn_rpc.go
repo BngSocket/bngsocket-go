@@ -14,13 +14,7 @@ import (
 // Wird verwendet um RPC Anfragen zu verarbeiten
 func processRpcRequest(o *BngConn, rpcReq *transport.RpcRequest) error {
 	// Es wird geprüft ob die gesuchte Zielfunktion vorhanden ist
-	var found bool
-	var fn reflect.Value
-	if rpcReq.Hidden {
-		fn, found = o.hiddenFunctions.Load(rpcReq.Name)
-	} else {
-		fn, found = o.functions.Load(rpcReq.Name)
-	}
+	fn, found := o.functions.Load(rpcReq.Name)
 	if !found {
 		if err := socketWriteRpcErrorResponse(o, ErrUnkownRpcFunction.Error(), rpcReq.Id); err != nil {
 			return fmt.Errorf("bngsocket->processRpcRequest: " + err.Error())
@@ -146,7 +140,7 @@ func processRpcResponse(o *BngConn, rpcResp *transport.RpcResponse) error {
 }
 
 // Registriert eine Funktion im allgemeien
-func _RegisterFunction(s *BngConn, hidden bool, nameorid string, fn interface{}) error {
+func _RegisterFunction(s *BngConn, nameorid string, fn interface{}) error {
 	// Es wird geprüft ob die Verbindung getrennt wurde
 	if connectionIsClosed(s) {
 		return io.EOF
@@ -163,32 +157,20 @@ func _RegisterFunction(s *BngConn, hidden bool, nameorid string, fn interface{})
 	s.connMutex.Lock()
 	defer s.connMutex.Unlock()
 
-	// Die Funktion wird Registriert,
-	// Es wird unterschieden zwischen Public und Hidden Funktionen
-	if hidden {
-		// Es wird geprüft ob es bereits eine Funktion mit dem Namen gibt
-		if _, found := s.hiddenFunctions.Load(nameorid); found {
-			return fmt.Errorf("bngsocket->_RegisterFunction[1]: function always registrated")
-		}
-
-		// Die Funktion wird geschieben
-		s.hiddenFunctions.Store(nameorid, fnValue)
-	} else {
-		// Es wird geprüft ob es bereits eine Funktion mit dem Namen gibt
-		if _, found := s.functions.Load(nameorid); found {
-			return fmt.Errorf("bngsocket->_RegisterFunction[2]: function always registrated")
-		}
-
-		// Die Funktion wird geschieben
-		s.functions.Store(nameorid, fnValue)
+	// Es wird geprüft ob es bereits eine Funktion mit dem Namen gibt
+	if _, found := s.functions.Load(nameorid); found {
+		return fmt.Errorf("bngsocket->_RegisterFunction[2]: function always registrated")
 	}
+
+	// Die Funktion wird geschieben
+	s.functions.Store(nameorid, fnValue)
 
 	// Rückgabe
 	return nil
 }
 
 // Ruft eine Funktion auf der Gegenseite auf
-func _CallFunction(s *BngConn, hiddencall bool, nameorid string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
+func _CallFunction(s *BngConn, nameorid string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
 	// Es wird geprüft ob die Verbindung getrennt wurde
 	if connectionIsClosed(s) {
 		return nil, io.EOF
@@ -217,7 +199,6 @@ func _CallFunction(s *BngConn, hiddencall bool, nameorid string, params []interf
 		Params:       convertedParams,
 		ReturnDTypes: returnDataTypes,
 		Name:         nameorid,
-		Hidden:       hiddencall,
 		Id:           strings.ReplaceAll(uuid.NewString(), "-", ""),
 	}
 

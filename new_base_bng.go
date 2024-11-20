@@ -23,7 +23,6 @@ func _NewBaseBngSocketObject(socket net.Conn) *BngConn {
 		closing:                  newSafeBool(false),
 		writerMutex:              new(sync.Mutex),
 		functions:                newSafeMap[string, reflect.Value](),
-		hiddenFunctions:          newSafeMap[string, reflect.Value](),
 		openRpcRequests:          _SafeMap[string, chan *transport.RpcResponse]{Map: new(sync.Map)},
 		openChannelListener:      newSafeMap[string, *BngConnChannelListener](),
 		openChannelInstances:     newSafeMap[string, *BngConnChannel](),

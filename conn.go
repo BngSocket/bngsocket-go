@@ -131,7 +131,7 @@ func (s *BngConn) JoinChannel(channelId string) (*BngConnChannel, error) {
 //   - error: Ein Fehler, falls beim Registrieren der Funktion ein Problem aufgetreten ist, ansonsten nil.
 func (s *BngConn) RegisterFunction(name string, fn interface{}) error {
 	// Fügt eine neue Funktion hinzu
-	if err := _RegisterFunction(s, false, name, fn); err != nil {
+	if err := _RegisterFunction(s, name, fn); err != nil {
 		return fmt.Errorf("bngsocket->RegisterFunction[0]: " + err.Error())
 	}
 
@@ -152,7 +152,7 @@ func (s *BngConn) RegisterFunction(name string, fn interface{}) error {
 //   - error: Ein Fehler, falls beim Aufrufen der Funktion ein Problem aufgetreten ist, ansonsten nil.
 func (s *BngConn) CallFunction(name string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
 	// Die Funktion auf der Gegenseite wird aufgerufen
-	data, err := _CallFunction(s, false, name, params, returnDataType)
+	data, err := _CallFunction(s, name, params, returnDataType)
 	if err != nil {
 		return nil, err
 	}

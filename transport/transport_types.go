@@ -14,7 +14,6 @@ type RpcRequest struct {
 	Params       []*RpcDataCapsle `msgpack:"parameters"`
 	ReturnDTypes []string         `msgpack:"returndtypes"`
 	Name         string           `msgpack:"name"`
-	Hidden       bool             `msgpack:"hidden"`
 	Id           string           `msgpack:"id"`
 }
 
