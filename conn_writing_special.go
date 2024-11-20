@@ -1,50 +1,28 @@
 package bngsocket
 
 import (
+	"bufio"
 	"fmt"
 
 	"github.com/CustodiaJS/bngsocket/transport"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-// writePacketACK wird verwendet um zu bestätigen dass ein Packet erfolgreich übertragen wurde
 func writePacketACK(o *BngConn) error {
-	// Byte senden
-	_DebugPrint(fmt.Sprintf("BngConn(%s): Sent ACK", o._innerhid))
-	_, err := o.conn.Write([]byte{0})
-	if err != nil {
-		return fmt.Errorf("error sending ACK/NACK: %w", err)
+	writer := bufio.NewWriter(o.conn)
+	ack := []byte("ACK")
+
+	// Schreibe das ACK
+	if _, err := writer.Write(ack); err != nil {
+		return fmt.Errorf("%w: %v", ErrWriteACK, err)
 	}
 
-	return nil
-}
-
-// writePacketACK wird verwendet um zu Signalisieren, das eine Übertragung nicht erfolgreich war
-func writePacketNACK(o *BngConn) error {
-	// Byte senden
-	_, err := o.conn.Write([]byte{1})
-	if err != nil {
-		return fmt.Errorf("error sending ACK/NACK: %w", err)
+	// Flushe den Writer
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("%w: %v", ErrFlushACK, err)
 	}
 
-	_DebugPrint("Sent NACK")
-	return nil
-}
-
-// writePacketACK wird verwendet um zu Signalisieren, das eine Übertragung nicht erfolgreich war
-func writePacketABORT(o *BngConn) error {
-	// Byte senden
-	_, err := o.conn.Write([]byte{2})
-	if err != nil {
-		return fmt.Errorf("error sending ACK/NACK: %w", err)
-	}
-
-	_DebugPrint("Sent NACK")
-	return nil
-}
-
-// writeConnectionCloseSignal wird verwendet um zu Signalisiereb, das eine Verbindung geschlossen werden soll
-func writeConnectionCloseSignal(o *BngConn) error {
+	_DebugPrint(fmt.Sprintf("BngConn(%s): ACK sent", o._innerhid))
 	return nil
 }
 

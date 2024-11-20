@@ -1,92 +1,81 @@
 package bngsocket
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
-	"hash/crc32"
 )
-
-func writeBytesAndWaitOfACK(o *BngConn, data []byte) error {
-	if len(data) > 4096 {
-		return fmt.Errorf("data to big")
-	}
-
-	totalSend := 0
-	for totalSend < len(data) {
-		n, err := o.conn.Write(data)
-		if err != nil {
-			return err
-		}
-		totalSend += n
-		if err := o.ackHandle.WaitOfACK(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 // writeBytesIntoSocketConn schreibt ein Byte-Array in den Schreibkanal des angegebenen Sockets.
 // Es gibt einen Fehler zurück, wenn der Socket oder der Schreibkanal nicht verfügbar ist.
-func writeBytesIntoSocketConn(o *BngConn, nData []byte) error {
-	// Der Writing Mutex wird verwendet
-	o.writerMutex.Lock()
-	defer o.writerMutex.Unlock()
+func writeBytesIntoSocketConn(o *BngConn, data []byte) error {
+	const chunkSize = 1024 // Maximale Größe eines Chunks in Bytes
+	writer := bufio.NewWriter(o.conn)
 
-	const frameSize = 40 // Maximale Größe eines Frames
+	// Gesamtlänge der Daten
+	totalLength := len(data)
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Sending %d bytes in %d-byte chunks", o._innerhid, totalLength, chunkSize))
 
-	// Berechne die CRC32-Prüfsumme der gesamten Daten
-	crc := crc32.ChecksumIEEE(nData)
-	crcBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(crcBytes, crc)
-
-	// Daten mit CRC zusammenfügen
-	data := append(nData, crcBytes...)
-
-	// Das Steuerbyte wird übertragen, dieses Signalisiert dass eine neue Übertragung gestartet werden soll
-	_DebugPrint(fmt.Sprintf("BngConn(%s): write control byte", o._innerhid))
-	if err := writeBytesAndWaitOfACK(o, []byte{0}); err != nil {
-		return err
-	}
-
-	// Die Größe der Daten werden übertragen
-	sizeBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(sizeBytes, uint64(len(data)))
-
-	// Die Gesamtgröße des Datensatzes wird übertragen
-	_DebugPrint(fmt.Sprintf("BngConn(%s): write data size", o._innerhid))
-	if err := writeBytesAndWaitOfACK(o, sizeBytes); err != nil {
-		return err
-	}
-
-	totalBytes := len(data) // Gesamtgröße der zu übertragenden Daten
-	bytesSent := 0          // Anzahl der bereits gesendeten Bytes
-
-	// Übertragung der Daten in Paketen
-	for bytesSent < totalBytes {
-		// Berechne die Größe des aktuellen Chunks
-		chunkSize := frameSize
-		if totalBytes-bytesSent < chunkSize {
-			chunkSize = totalBytes - bytesSent
+	// Aufteilen und Senden der Daten
+	for start := 0; start < totalLength; start += chunkSize {
+		end := start + chunkSize
+		if end > totalLength {
+			end = totalLength // Der letzte Chunk hat möglicherweise weniger als 64 Bytes
 		}
 
-		// Paket schreiben
-		err := writeBytesAndWaitOfACK(o, (data[bytesSent : bytesSent+chunkSize]))
-		if err != nil {
-			writeProcessErrorHandling(o, fmt.Errorf("error writing data to socket: %w", err))
-			return err
+		chunk := data[start:end]
+
+		// Schreibe den Typ 'M' (Message)
+		if err := writer.WriteByte('M'); err != nil {
+			return fmt.Errorf("%w: %v", ErrWriteMessageType, err)
+		}
+
+		// Schreibe die Länge des Chunks (Big-Endian)
+		chunkLength := uint32(len(chunk))
+		if err := binary.Write(writer, binary.BigEndian, chunkLength); err != nil {
+			return fmt.Errorf("%w: %v", ErrWriteChunkLength, err)
+		}
+
+		// Schreibe den Chunk selbst
+		bytesToWrite := len(chunk)
+		for bytesWritten := 0; bytesWritten < bytesToWrite; {
+			n, err := writer.Write(chunk[bytesWritten:])
+			if err != nil {
+				return fmt.Errorf("%w: %v", ErrWriteChunk, err)
+			}
+
+			bytesWritten += n
+			if n == 0 {
+				return fmt.Errorf("%w: no further bytes written, connection may be broken", ErrWriteChunk)
+			}
+		}
+
+		// Flush die Daten
+		if err := writer.Flush(); err != nil {
+			return fmt.Errorf("%w: %v", ErrFlushWriter, err)
+		}
+
+		_DebugPrint(fmt.Sprintf("BngConn(%s): Chunk [%d:%d] sent", o._innerhid, start, end))
+
+		// Warte auf ACK
+		if err := o.ackHandle.WaitOfACK(); err != nil {
+			return fmt.Errorf("%w for chunk [%d:%d]: %v", ErrWaitForACK, start, end, err)
 		}
 	}
 
-	_DebugPrint(fmt.Sprintf("BngConn(%s): write flush byte: byte(3)", o._innerhid))
+	// Senden von EndTransfer (ET)
+	if err := writer.WriteByte('E'); err != nil {
+		return fmt.Errorf("%w: %v", ErrWriteEndTransfer, err)
+	}
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("%w after ET: %v", ErrFlushWriter, err)
+	}
+	_DebugPrint(fmt.Sprintf("BngConn(%s): ET sent", o._innerhid))
 
-	// Flush-Byte senden
-	err := writeBytesAndWaitOfACK(o, []byte{'\n'})
-	if err != nil {
-		writeProcessErrorHandling(o, fmt.Errorf("flush byte write error: %w", err))
-		return err
+	// Warten auf ACK für ET
+	if err := o.ackHandle.WaitOfACK(); err != nil {
+		return fmt.Errorf("%w after ET: %v", ErrWaitForACK, err)
 	}
 
-	// LOG
-	_DebugPrint(fmt.Sprintf("BngConn(%s): total bytes written: %d", o._innerhid, bytesSent))
 	return nil
 }

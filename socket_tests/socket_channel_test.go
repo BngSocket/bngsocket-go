@@ -1,19 +1,22 @@
 package sockettests
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/CustodiaJS/bngsocket"
 )
 
-var endlwait = new(sync.WaitGroup)
-var waitOfServerChannel = new(sync.WaitGroup)
+var (
+	isServer = flag.Bool("server", false, "Starte den Test als Server")
+)
 
-func serveChannelConnection_ClientSide(channel *bngsocket.BngConnChannel, wgt *sync.WaitGroup) {
+func serveChannelConnection_ClientSide(channel *bngsocket.BngConnChannel) {
 	// Es wird auf die Eintreffenden Daten gewartet
 	readed := make([]byte, 1024)
 	n, err := channel.Read(readed)
@@ -25,8 +28,6 @@ func serveChannelConnection_ClientSide(channel *bngsocket.BngConnChannel, wgt *s
 	// Die Eingetroffenen Daten werden ausgelesen
 	data := readed[:n]
 	fmt.Println(string(data))
-	endlwait.Done()
-	wgt.Done()
 }
 
 func serveConn_ClientSide(conn net.Conn) {
@@ -45,8 +46,6 @@ func serveConn_ClientSide(conn net.Conn) {
 		os.Exit(1)
 	}
 
-	waitOfServerChannel.Done()
-
 	// Es wird auf neue Verbindungen gewartet
 	channel, err := listener.Accept()
 	if err != nil {
@@ -58,11 +57,11 @@ func serveConn_ClientSide(conn net.Conn) {
 	wgt := new(sync.WaitGroup)
 	wgt.Add(1)
 
-	go serveChannelConnection_ClientSide(channel, wgt)
+	go serveChannelConnection_ClientSide(channel)
 	wgt.Wait()
 }
 
-func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
+func serveConn_ServerSide(conn net.Conn) {
 	// Die Verbindung wird geupgradet
 	fmt.Println("Verbindung upgraden")
 	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
@@ -71,7 +70,7 @@ func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 		return
 	}
 
-	waitOfServerChannel.Wait()
+	time.Sleep(500 * time.Millisecond)
 
 	// Es wird eine ausgehende Verbindung hergestellt
 	channel, err := upgrConn.JoinChannel("test-channel")
@@ -86,7 +85,6 @@ func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 		fmt.Println(err.Error())
 		return
 	}
-	endlwait.Wait()
 }
 
 func TestChannelSocket(t *testing.T) {
@@ -94,14 +92,50 @@ func TestChannelSocket(t *testing.T) {
 		fmt.Println(v...)
 	})
 
-	for i := 0; i < 1; i++ {
-		conn1, conn2 := net.Pipe()
-		wg := new(sync.WaitGroup)
-		endlwait.Add(1)
-		wg.Add(1)
-		waitOfServerChannel.Add(1)
-		go serveConn_ServerSide(conn1, wg)
-		serveConn_ClientSide(conn2)
-		wg.Wait()
+	// UNIX-Socket Pfad
+	socketPath := "/tmp/test_bngsocket.sock"
+
+	if *isServer {
+		// Starte als Server
+		os.Remove(socketPath)
+		startServer(t, socketPath)
+	} else {
+		// Starte als Client
+		startClient(t, socketPath)
 	}
+}
+
+func startServer(t *testing.T, socketPath string) {
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		t.Fatalf("Fehler beim Erstellen des UNIX-Socket-Listeners: %v", err)
+	}
+	defer listener.Close()
+
+	fmt.Println("Server gestartet, wartet auf Verbindungen:", socketPath)
+
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+
+	conn, err := listener.Accept()
+	if err != nil {
+		t.Fatalf("fehler beim Akzeptieren der Verbindung: %v", err)
+	}
+	defer conn.Close()
+	go serveConn_ServerSide(conn)
+
+	wg.Wait()
+	fmt.Println("Server beendet")
+}
+
+func startClient(t *testing.T, socketPath string) {
+	conn, err := net.Dial("unix", socketPath)
+	if err != nil {
+		t.Fatalf("Fehler beim Verbinden zum UNIX-Socket: %v", err)
+	}
+	defer conn.Close()
+
+	fmt.Println("Client gestartet, verbindet zum Server...")
+	serveConn_ClientSide(conn)
+	fmt.Println("Client beendet")
 }
