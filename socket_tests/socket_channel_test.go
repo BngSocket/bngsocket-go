@@ -32,7 +32,6 @@ func serveChannelConnection_ClientSide(channel *bngsocket.BngConnChannel) {
 
 func serveConn_ClientSide(conn net.Conn) {
 	// Die Verbindung wird geupgradet
-	fmt.Println("Verbindung upgraden")
 	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
 	if err != nil {
 		fmt.Println("T", err.Error())
@@ -63,7 +62,6 @@ func serveConn_ClientSide(conn net.Conn) {
 
 func serveConn_ServerSide(conn net.Conn) {
 	// Die Verbindung wird geupgradet
-	fmt.Println("Verbindung upgraden")
 	upgrConn, err := bngsocket.UpgradeSocketToBngConn(conn)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -117,15 +115,13 @@ func startServer(t *testing.T, socketPath string) {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
-	conn, err := listener.Accept()
-	if err != nil {
-		t.Fatalf("fehler beim Akzeptieren der Verbindung: %v", err)
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			t.Fatalf("fehler beim Akzeptieren der Verbindung: %v", err)
+		}
+		go serveConn_ServerSide(conn)
 	}
-	defer conn.Close()
-	go serveConn_ServerSide(conn)
-
-	wg.Wait()
-	fmt.Println("Server beendet")
 }
 
 func startClient(t *testing.T, socketPath string) {

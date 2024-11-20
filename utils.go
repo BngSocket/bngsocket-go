@@ -532,6 +532,7 @@ func convertRPCCallParameterBackToGoValues(socket *BngConn, fn reflect.Value, ct
 		if err != nil {
 			return nil, fmt.Errorf("convertRPCCallParameterBackToGoValues: " + err.Error())
 		}
+		fmt.Println(param.Type, param.Value)
 
 		// Wid zwischengespeichert
 		in[i+1] = cvalue

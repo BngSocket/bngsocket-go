@@ -146,6 +146,8 @@ func (m *BngConnChannel) Write(b []byte) (n int, err error) {
 	}
 
 	// Es wird versucht, die Daten in den Channel zu schreiben
+	// LOG
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Strat transfering data", m.socket._innerhid))
 	packageId, writtenSize, err := channelDataTransport(m.socket, b, m.sesisonId) // sessionId korrigiert
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -205,6 +207,8 @@ func (m *BngConnChannel) Write(b []byte) (n int, err error) {
 		// Der Fehler wird zurückgegeben
 		return 0, ferr
 	}
+
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Data transfered", m.socket._innerhid))
 
 	// Die Daten wurden erfolgreich übertragen
 	return writtenSize, nil

@@ -14,7 +14,16 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-// Wird verwedet um einen neuen Channel bereitzustellen
+// OpenChannelListener wird verwendet, um einen neuen Channel bereitzustellen.
+// Diese Methode erstellt einen neuen Channel Listener, der auf eingehende Channel-Anfragen lauscht.
+// Der Listener wird in der openChannelListener Map gespeichert, um zukünftige Anfragen zu verwalten.
+//
+// Parameter:
+//   - channelId string: Die eindeutige ID des Channels, für den der Listener erstellt werden soll.
+//
+// Rückgabe:
+//   - *BngConnChannelListener: Ein Zeiger auf das neu erstellte Channel Listener Objekt.
+//   - error: Ein Fehler, falls beim Erstellen oder Speichern des Listeners ein Problem auftritt, ansonsten nil.
 func (s *BngConn) OpenChannelListener(cahnnelId string) (*BngConnChannelListener, error) {
 	// Der Objekt Mutex wird verwendet
 	s.connMutex.Lock()
@@ -43,7 +52,15 @@ func (s *BngConn) OpenChannelListener(cahnnelId string) (*BngConnChannelListener
 	return listener, nil
 }
 
-// Wird verwendet um eine Channel zu öffnen und zu verbinden
+// JoinChannel wird verwendet, um einem bestehenden Channel beizutreten und eine Verbindung herzustellen.
+// Diese Methode sendet eine Join-Anfrage an den Server und wartet auf die Antwort, um die Verbindung zu bestätigen.
+//
+// Parameter:
+//   - channelId string: Die ID des Channels, dem beigetreten werden soll.
+//
+// Rückgabe:
+//   - *BngConnChannel: Ein Zeiger auf das verbundene Channel-Objekt.
+//   - error: Ein Fehler, falls beim Beitritt zum Channel ein Problem auftritt, ansonsten nil.
 func (s *BngConn) JoinChannel(channelId string) (*BngConnChannel, error) {
 	// Es wird ein RpcRequest Paket erstellt
 	chreq := &transport.ChannelRequest{
@@ -103,7 +120,15 @@ func (s *BngConn) JoinChannel(channelId string) (*BngConnChannel, error) {
 	return channel, nil
 }
 
-// RegisterFunction ermöglicht es, neue Funktionen dynamisch hinzuzufügen
+// RegisterFunction ermöglicht es, neue Funktionen dynamisch hinzuzufügen.
+// Diese Methode registriert eine Funktion unter einem bestimmten Namen, sodass sie später über RPC aufgerufen werden kann.
+//
+// Parameter:
+//   - name string: Der eindeutige Name, unter dem die Funktion registriert werden soll.
+//   - fn interface{}: Die Funktion, die registriert werden soll. Sie muss eine gültige Funktion sein.
+//
+// Rückgabe:
+//   - error: Ein Fehler, falls beim Registrieren der Funktion ein Problem aufgetreten ist, ansonsten nil.
 func (s *BngConn) RegisterFunction(name string, fn interface{}) error {
 	// Fügt eine neue Funktion hinzu
 	if err := _RegisterFunction(s, false, name, fn); err != nil {
@@ -114,7 +139,17 @@ func (s *BngConn) RegisterFunction(name string, fn interface{}) error {
 	return nil
 }
 
-// CallFunction ruft eine Funktion auf der Gegenseite auf
+// CallFunction ruft eine Funktion auf der Gegenseite (Remote) auf.
+// Diese Methode sendet eine Funktionsanfrage über die Socket-Verbindung und wartet auf die Antwort.
+//
+// Parameter:
+//   - name string: Der Name der Funktion, die auf der Gegenseite aufgerufen werden soll.
+//   - params []interface{}: Ein Slice von Parametern, die an die Funktion übergeben werden.
+//   - returnDataType []reflect.Type: Ein Slice von Rückgabetypen, die die erwarteten Rückgabewerte der Funktion definieren.
+//
+// Rückgabe:
+//   - []interface{}: Ein Slice von Rückgabewerten der aufgerufenen Funktion.
+//   - error: Ein Fehler, falls beim Aufrufen der Funktion ein Problem aufgetreten ist, ansonsten nil.
 func (s *BngConn) CallFunction(name string, params []interface{}, returnDataType []reflect.Type) ([]interface{}, error) {
 	// Die Funktion auf der Gegenseite wird aufgerufen
 	data, err := _CallFunction(s, false, name, params, returnDataType)
@@ -126,7 +161,13 @@ func (s *BngConn) CallFunction(name string, params []interface{}, returnDataType
 	return data, nil
 }
 
-// Wird verwendet um die Verbindung zu schließen
+// Close wird verwendet, um die Verbindung zu schließen.
+// Diese Methode prüft zunächst, ob die Verbindung bereits geschlossen wurde.
+// Falls nicht, wird die Verbindung vollständig geschlossen.
+// Bei erfolgreichem Schließen wird nil zurückgegeben, andernfalls der aufgetretene Fehler.
+//
+// Rückgabe:
+//   - error: Ein Fehler, falls beim Schließen der Verbindung ein Problem aufgetreten ist, ansonsten nil.
 func (s *BngConn) Close() error {
 	// Es wird geprüft ob die Verbindung bereits getrennt wurde,
 	// wenn ja wird ein Fehler zurückgegeben
@@ -143,27 +184,57 @@ func (s *BngConn) Close() error {
 	return nil
 }
 
-// LocalAddr returns the local network address, if known.
+// LocalAddr gibt die lokale Netzwerkadresse zurück, falls bekannt.
+// Diese Methode ruft die LocalAddr-Methode der zugrunde liegenden Verbindung auf.
+//
+// Rückgabe:
+//   - net.Addr: Die lokale Netzwerkadresse der Verbindung.
 func (s *BngConn) LocalAddr() net.Addr {
 	return s.conn.LocalAddr()
 }
 
-// RemoteAddr returns the remote network address, if known.
+// RemoteAddr gibt die entfernte Netzwerkadresse zurück, falls bekannt.
+// Diese Methode ruft die RemoteAddr-Methode der zugrunde liegenden Verbindung auf.
+//
+// Rückgabe:
+//   - net.Addr: Die entfernte Netzwerkadresse der Verbindung.
 func (s *BngConn) RemoteAddr() net.Addr {
 	return s.conn.RemoteAddr()
 }
 
-// SetDeadline sets the read and write deadlines associated with the connection. It is equivalent to calling both SetReadDeadline and SetWriteDeadline.
+// SetDeadline setzt die Lese- und Schreib-Deadlines, die mit der Verbindung verknüpft sind.
+// Es ist äquivalent zum gleichzeitigen Aufruf von SetReadDeadline und SetWriteDeadline.
+//
+// Parameter:
+//   - t time.Time: Die Zeit, bis zu der Lese- und Schreiboperationen abgeschlossen sein müssen.
+//     Eine Null-Zeit bedeutet, dass keine Deadlines gesetzt werden.
 func (s *BngConn) SetDeadline(t time.Time) error {
 	return s.conn.SetDeadline(t)
 }
 
-// SetReadDeadline sets the deadline for future Read calls and any currently-blocked Read call. A zero value for t means Read will not time out.
+// SetReadDeadline setzt die Deadline für zukünftige Read-Aufrufe und alle aktuell blockierten Read-Aufrufe.
+// Eine Null-Zeit für t bedeutet, dass Read-Aufrufe nicht ablaufen.
+//
+// Parameter:
+//   - t time.Time: Die Zeit, bis zu der ein Read-Aufruf abgeschlossen sein muss.
+//     Eine Null-Zeit bedeutet, dass keine Deadline gesetzt wird.
+//
+// Rückgabe:
+//   - error: Ein Fehler, falls beim Setzen der Deadline ein Problem aufgetreten ist, ansonsten nil.
 func (s *BngConn) SetReadDeadline(t time.Time) error {
 	return s.conn.SetReadDeadline(t)
 }
 
-// SetWriteDeadline sets the deadline for future Write calls and any currently-blocked Write call. Even if write times out, it may return n > 0, indicating that some of the data was successfully written. A zero value for t means Write will not time out.
+// SetWriteDeadline setzt die Deadline für zukünftige Write-Aufrufe und alle aktuell blockierten Write-Aufrufe.
+// Selbst wenn das Schreiben aufgrund der Deadline abläuft, kann es n > 0 zurückgeben, was bedeutet, dass einige Daten erfolgreich geschrieben wurden.
+// Eine Null-Zeit für t bedeutet, dass Write-Aufrufe nicht ablaufen.
+//
+// Parameter:
+//   - t time.Time: Die Zeit, bis zu der ein Write-Aufruf abgeschlossen sein muss.
+//     Eine Null-Zeit bedeutet, dass keine Deadline gesetzt wird.
+//
+// Rückgabe:
+//   - error: Ein Fehler, falls beim Setzen der Deadline ein Problem aufgetreten ist, ansonsten nil.
 func (s *BngConn) SetWriteDeadline(t time.Time) error {
 	return s.conn.SetWriteDeadline(t)
 }

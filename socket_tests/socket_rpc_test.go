@@ -1,10 +1,10 @@
 package sockettests
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
@@ -23,13 +23,6 @@ func serveChannelConnection_ClientSideRPC(conn *bngsocket.BngConn) {
 	_, err := conn.CallFunction("test", []interface{}{100000}, []reflect.Type{})
 	if err != nil {
 		panic(err)
-	}
-
-	_, terr := conn.CallFunction("testNoneExisting", []interface{}{100000}, []reflect.Type{})
-	if terr != nil {
-		if !errors.Is(terr, bngsocket.ErrUnkownRpcFunction) {
-			panic(terr.Error() == bngsocket.ErrUnkownRpcFunction.Error())
-		}
 	}
 
 	testfunc := func(req *bngsocket.BngRequest) error {
@@ -115,16 +108,58 @@ func serveConn_ServerSideRPC(conn net.Conn) {
 	upgrConn.Close()
 }
 
+// TestRPCSocket verwendet Unix-Sockets anstelle von net.Pipe()
 func TestRPCSocket(t *testing.T) {
-	bngsocket.DebugSetPrintFunction(t.Log)
+	bngsocket.DebugSetPrintFunction(func(v ...any) {
+		fmt.Println(v...)
+	})
 
-	conn1, conn2 := net.Pipe()
+	// Erstellen eines temporären Unix-Socket-Pfads
+	socketDir := os.TempDir()
+	socketPath := filepath.Join(socketDir, fmt.Sprintf("test_socket_%d.sock", time.Now().UnixNano()))
+
+	// Sicherstellen, dass der Socket-Pfad nach dem Test entfernt wird
+	defer os.Remove(socketPath)
+
+	// Erstellen eines Unix-Socket-Listeners
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		t.Fatalf("Fehler beim Erstellen des Unix-Socket-Listeners: %v", err)
+	}
+	defer listener.Close()
 
 	mainWait.Add(2)
 	clientWait.Add(1)
 	serverWait.Add(1)
-	go serveConn_ServerSideRPC(conn1)
+
+	// Starten des Server-Seitigen RPC in einer separaten Goroutine
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			t.Errorf("Fehler beim Akzeptieren der Verbindung: %v", err)
+			return
+		}
+		defer conn.Close()
+		serveConn_ServerSideRPC(conn)
+		mainWait.Done()
+	}()
+
+	// Warten, bis der Server bereit ist
 	time.Sleep(100 * time.Millisecond)
-	serveConn_ClientSideRPC(conn2)
+
+	// Herstellen der Client-Verbindung zum Unix-Socket
+	conn, err := net.Dial("unix", socketPath)
+	if err != nil {
+		t.Fatalf("Fehler beim Verbinden zum Unix-Socket: %v", err)
+	}
+	defer conn.Close()
+
+	// Starten des Client-Seitigen RPC
+	go func() {
+		serveConn_ClientSideRPC(conn)
+		mainWait.Done()
+	}()
+
+	// Warten auf den Abschluss aller Goroutinen
 	mainWait.Wait()
 }

@@ -17,6 +17,7 @@ import (
 // Rückgabe:
 //   - reflect.Value: Die dynamisch erstellte Funktion, die den erwarteten Typ hat.
 func proxyHiddenRpcFunction(s *BngConn, expectedType reflect.Type, hiddenFuncId string) reflect.Value {
+	fmt.Println("FNC")
 	return reflect.MakeFunc(expectedType, func(args []reflect.Value) (results []reflect.Value) {
 		// Anzahl der erwarteten Rückgabewerte ermitteln
 		numOut := expectedType.NumOut()

@@ -28,6 +28,9 @@ func processRpcRequest(o *BngConn, rpcReq *transport.RpcRequest) error {
 		return nil
 	}
 
+	// LOG
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Enter incomming rpc function call", o._innerhid))
+
 	// Context erstellen und an die Funktion übergeben
 	ctx := &BngRequest{Conn: o}
 
@@ -36,6 +39,8 @@ func processRpcRequest(o *BngConn, rpcReq *transport.RpcRequest) error {
 	if err != nil {
 		return fmt.Errorf("processRpcRequest[1]: " + err.Error())
 	}
+
+	fmt.Println(in)
 
 	// Methode PANIC Sicher ausführen ausführen
 	results, err := func() (results []reflect.Value, err error) {
