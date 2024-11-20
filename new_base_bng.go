@@ -1,6 +1,7 @@
 package bngsocket
 
 import (
+	"bufio"
 	"net"
 	"reflect"
 	"sync"
@@ -12,6 +13,8 @@ import (
 func _NewBaseBngSocketObject(socket net.Conn) *BngConn {
 	bngConn := &BngConn{
 		conn:                     socket,
+		writer:                   bufio.NewWriter(socket),
+		reader:                   bufio.NewReader(socket),
 		connMutex:                new(sync.Mutex),
 		_innerhid:                uuid.NewString(),
 		ackHandle:                newConnACK(),

@@ -8,12 +8,31 @@ import (
 	"time"
 )
 
-// Gibt die SitzungsId zurück
+// GetSessionId gibt die aktuelle Session-ID des BngConnChannels zurück.
+//
+// Diese Methode ermöglicht es, die eindeutige Session-ID eines Channels abzurufen,
+// die zur Identifikation und Verwaltung von Kommunikationssitzungen verwendet wird.
+//
+// Rückgabe:
+//   - string: Die aktuelle Session-ID des Channels.
 func (o *BngConnChannel) GetSessionId() string {
 	return o.sesisonId
 }
 
-// Read implementiert die Read-Methode des net.Conn-Interfaces.
+// Read implementiert die Read-Methode des io.Reader-Interfaces.
+//
+// Diese Methode ermöglicht das Lesen von Daten aus dem BngConnChannel. Sie prüft
+// zunächst, ob der Channel oder die zugrunde liegende Verbindung geschlossen ist
+// oder ob ein laufender Fehler vorliegt. Wenn Daten im internen Cache vorhanden sind,
+// werden diese zuerst gelesen. Andernfalls werden neue Daten aus dem ByteCache gelesen.
+// Nach dem Lesen der Daten wird ein ACK (Acknowledgment) zurückgesendet.
+//
+// Parameter:
+//   - b []byte: Das Slice, in das die gelesenen Daten geschrieben werden.
+//
+// Rückgabe:
+//   - n int: Die Anzahl der erfolgreich gelesenen Bytes.
+//   - err error: Ein Fehler, falls einer aufgetreten ist, ansonsten nil.s
 func (m *BngConnChannel) Read(b []byte) (n int, err error) {
 	// Überprüfe zu Beginn, ob der Kanal oder die Verbindung geschlossen ist oder ein Fehler vorliegt
 	if channClosed, connClosed, runningErr := _IsClosedOrHasRunningErrorOnChannel(m); channClosed || connClosed || runningErr != nil {

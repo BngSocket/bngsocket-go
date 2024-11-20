@@ -28,6 +28,7 @@ var (
 	ErrWaitForACK                  = errors.New("failed to wait for ACK")
 	ErrWriteACK                    = errors.New("failed to write ACK")
 	ErrFlushACK                    = errors.New("failed to flush ACK writer")
+	ErrSendAckAfterMSG             = errors.New("failed write ack after msg")
 )
 
 // Wandelt einen Fehler welcher mittels String übertragen wurde zurück in einen Go Fehler

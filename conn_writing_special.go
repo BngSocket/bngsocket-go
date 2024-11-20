@@ -1,7 +1,6 @@
 package bngsocket
 
 import (
-	"bufio"
 	"fmt"
 
 	"github.com/CustodiaJS/bngsocket/transport"
@@ -9,16 +8,18 @@ import (
 )
 
 func writePacketACK(o *BngConn) error {
-	writer := bufio.NewWriter(o.conn)
+	o.writerMutex.Lock()
+	defer o.writerMutex.Unlock()
+
 	ack := []byte("ACK")
 
 	// Schreibe das ACK
-	if _, err := writer.Write(ack); err != nil {
+	if _, err := o.writer.Write(ack); err != nil {
 		return fmt.Errorf("%w: %v", ErrWriteACK, err)
 	}
 
 	// Flushe den Writer
-	if err := writer.Flush(); err != nil {
+	if err := o.writer.Flush(); err != nil {
 		return fmt.Errorf("%w: %v", ErrFlushACK, err)
 	}
 

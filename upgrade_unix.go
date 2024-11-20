@@ -8,10 +8,21 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-// Wird verwendet um Vorhandene Sockets zu einem bngsocket zu verwandeln
+// UpgradeSocketToBngConn wandelt einen gegebenen net.Conn in ein *BngConn Objekt um.
+// Diese Funktion prüft zunächst den Typ des übergebenen Sockets und erstellt basierend darauf
+// ein neues BngConn Objekt. Unterstützte Verbindungstypen sind *net.UnixConn, *net.TCPConn,
+// *websocket.Conn, *tls.Conn und allgemeine net.Conn. Nach der erfolgreichen Erstellung
+// des BngConn Objekts werden die erforderlichen Hintergrundprozesse gestartet.
+//
+// Parameter:
+//   - socket net.Conn: Das zu upgradende Socket, das verschiedene Verbindungstypen unterstützen kann.
+//
+// Rückgabe:
+//   - *BngConn: Ein Zeiger auf das neu erstellte BngConn Objekt, das die Socket-Verbindung verwaltet.
+//   - error: Ein Fehler, falls der Verbindungstyp nicht unterstützt wird oder ein anderer Fehler auftritt.
 func UpgradeSocketToBngConn(socket net.Conn) (*BngConn, error) {
-	// Es wird geprüft ob es sich um einen Zulässigen Socket handelt
-	// außerdem wird das Basis BNG Objekt erzeugt
+	// Es wird geprüft, ob es sich um einen zulässigen Socket handelt
+	// Außerdem wird das Basis BNG Objekt erzeugt
 	var client *BngConn
 	switch cconn := socket.(type) {
 	case *net.UnixConn:
@@ -25,19 +36,19 @@ func UpgradeSocketToBngConn(socket net.Conn) (*BngConn, error) {
 	case net.Conn:
 		client = _NewBaseBngSocketObject(socket)
 	default:
-		return nil, fmt.Errorf("not supported connect type: %s", cconn)
+		return nil, fmt.Errorf("nicht unterstützter Verbindungstyp: %s", cconn)
 	}
 
 	// Die Anzahl der Routinen wird übermittelt
 	client.backgroundProcesses.Add(2)
 
-	// Debug
-	_DebugPrint(fmt.Sprintf("Connection upraged to BngConn = %s", client._innerhid))
+	// Debug-Ausgabe zur Bestätigung des Upgrades
+	_DebugPrint(fmt.Sprintf("Verbindung auf BngConn aufgerüstet = %s", client._innerhid))
 
-	// Es wird eine Routine gestartet welche für das Senden der Ausgehenden Daten ist
+	// Es wird eine Routine gestartet, welche für das Senden der ausgehenden Daten ist
 	//go constantWriting(client)
 
-	// Wird eine Routine gestatet welche Parament Daten ließt
+	// Es wird eine Routine gestartet, welche Parameter Daten liest
 	go constantReading(client)
 
 	// Das Objekt wird zurückgegeben

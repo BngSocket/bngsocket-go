@@ -1,8 +1,7 @@
-//go:build debug
-
 package bngsocket
 
 import (
+	"flag"
 	"fmt"
 	"sync"
 )
@@ -10,13 +9,19 @@ import (
 var _debugMutex *sync.Mutex = new(sync.Mutex)
 var debugFunc func(v ...any)
 
+var (
+	debugEnable = flag.Bool("bng_debug", false, "Debug modus")
+)
+
 func _DebugPrint(values ...interface{}) {
-	_debugMutex.Lock()
-	defer _debugMutex.Unlock()
-	if debugFunc != nil {
-		debugFunc(values...)
-	} else {
-		fmt.Println(values...)
+	if *debugEnable {
+		_debugMutex.Lock()
+		defer _debugMutex.Unlock()
+		if debugFunc != nil {
+			debugFunc(values...)
+		} else {
+			fmt.Println(values...)
+		}
 	}
 }
 
