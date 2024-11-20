@@ -86,8 +86,8 @@ func connIoEOFError(socket *BngConn) {
 // readProcessErrorHandling wird verwendet, um beim Lesvorgang auf Fehler zu reagieren.
 // Diese Funktion analysiert den aufgetretenen Fehler und führt entsprechende Maßnahmen durch.
 // Bei einem EOF-Fehler wird connIoEOFError aufgerufen. Bei ECONNRESET oder EPIPE Fehlern wird
-// die Methode _ConsensusProtocolTermination mit einer entsprechenden Fehlermeldung aufgerufen.
-// Für alle anderen Fehler wird ebenfalls _ConsensusProtocolTermination aufgerufen.
+// die Methode consensusProtocolTermination mit einer entsprechenden Fehlermeldung aufgerufen.
+// Für alle anderen Fehler wird ebenfalls consensusProtocolTermination aufgerufen.
 // Die Funktion gibt einen booleschen Wert zurück, der angibt, ob die Verbindung geschlossen wurde.
 //
 // Parameter:
@@ -102,11 +102,11 @@ func readProcessErrorHandling(socket *BngConn, err error) bool {
 	if errors.Is(err, io.EOF) {
 		connIoEOFError(socket)
 	} else if errors.Is(err, syscall.ECONNRESET) {
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
+		consensusProtocolTermination(socket, fmt.Errorf("bngsocket->constantReading: "+err.Error()))
 	} else if errors.Is(err, syscall.EPIPE) {
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
+		consensusProtocolTermination(socket, fmt.Errorf("bngsocket->constantReading: "+err.Error()))
 	} else {
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantReading: " + err.Error()))
+		consensusProtocolTermination(socket, fmt.Errorf("bngsocket->constantReading: "+err.Error()))
 	}
 	return true
 }
@@ -114,8 +114,8 @@ func readProcessErrorHandling(socket *BngConn, err error) bool {
 // writeProcessErrorHandling wird verwendet, um beim Schreibvorgang auf Fehler zu reagieren.
 // Diese Funktion analysiert den aufgetretenen Fehler und führt entsprechende Maßnahmen durch.
 // Bei einem EOF-Fehler wird connIoEOFError aufgerufen. Bei ECONNRESET oder EPIPE Fehlern wird
-// die Methode _ConsensusProtocolTermination mit einer entsprechenden Fehlermeldung aufgerufen.
-// Für alle anderen Fehler wird ebenfalls _ConsensusProtocolTermination aufgerufen.
+// die Methode consensusProtocolTermination mit einer entsprechenden Fehlermeldung aufgerufen.
+// Für alle anderen Fehler wird ebenfalls consensusProtocolTermination aufgerufen.
 //
 // Parameter:
 //   - socket *BngConn: Ein Zeiger auf das BngConn-Objekt, das die Socket-Verbindung und
@@ -129,11 +129,11 @@ func writeProcessErrorHandling(socket *BngConn, err error) bool {
 	if errors.Is(err, io.EOF) {
 		connIoEOFError(socket)
 	} else if errors.Is(err, syscall.ECONNRESET) {
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
+		consensusProtocolTermination(socket, fmt.Errorf("bngsocket->constantWriting: "+err.Error()))
 	} else if errors.Is(err, syscall.EPIPE) {
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
+		consensusProtocolTermination(socket, fmt.Errorf("bngsocket->constantWriting: "+err.Error()))
 	} else {
-		socket._ConsensusProtocolTermination(fmt.Errorf("bngsocket->constantWriting: " + err.Error()))
+		consensusProtocolTermination(socket, fmt.Errorf("bngsocket->constantWriting: "+err.Error()))
 	}
 	return true
 }
@@ -221,4 +221,32 @@ func fullCloseConn(s *BngConn) error {
 
 	// Es ist kein Fehler aufgetreten
 	return nil
+}
+
+// Wird verwendet wenn ein Abweichender Protokoll Fehler auftritt
+func consensusProtocolTermination(o *BngConn, reason error) {
+	// Es wird geprüft ob die Verbindung bereits geschlossen wurde, wenn ja, wird der Vorgang verworfen
+	if connectionIsClosed(o) {
+		return
+	}
+
+	// LOG
+	_DebugPrint(fmt.Sprintf("BngConn(%s): ERROR %s", o._innerhid, reason.Error()))
+
+	// Der connMutextex wird angewenet
+	o.connMutex.Lock()
+	defer o.connMutex.Unlock()
+
+	// Der Fehler wird geschrieben
+	if reason == nil {
+		o.runningError.Set(fmt.Errorf(""))
+	} else {
+		o.runningError.Set(reason)
+	}
+
+	// Es wird Signalisiert dass die Verbindung geschlossen wurde
+	o.closed.Set(true)
+
+	// Die Socket Verbindung wird geschlossen
+	o.conn.Close()
 }

@@ -25,12 +25,7 @@ func serveChannelConnection_ClientSideRPC(conn *bngsocket.BngConn) {
 		panic(err)
 	}
 
-	testfunc := func(req *bngsocket.BngRequest) error {
-		fmt.Println("PROXY_CALL")
-		return nil
-	}
-
-	_, err = conn.CallFunction("test2", []interface{}{testfunc}, []reflect.Type{})
+	_, err = conn.CallFunction("test2", []interface{}{100}, []reflect.Type{})
 	if err != nil {
 		panic(err)
 	}
@@ -83,7 +78,7 @@ func serveConn_ServerSideRPC(conn net.Conn) {
 			}
 		}
 		fmt.Println("Server: Moinitoring geschlossen")
-		mainWait.Done()
+		//mainWait.Done()
 	}()
 
 	// Es wird eine neue RPC Funktion Registriert
@@ -95,8 +90,8 @@ func serveConn_ServerSideRPC(conn net.Conn) {
 		panic(err)
 	}
 
-	err = upgrConn.RegisterFunction("test2", func(req *bngsocket.BngRequest, testfunc func() error) error {
-		testfunc()
+	err = upgrConn.RegisterFunction("test2", func(req *bngsocket.BngRequest, a int) error {
+		fmt.Println(a)
 		return nil
 	})
 	if err != nil {

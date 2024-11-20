@@ -6,7 +6,192 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+
+	"github.com/CustodiaJS/bngsocket/transport"
+	"github.com/vmihailenco/msgpack/v5"
 )
+
+// Nimmt eintreffende Daten entgegen
+func processReadedData(o *BngConn, data []byte) {
+	// Dynamisches Unmarshallen in eine map[string]interface{} oder interface{}
+	var typeInfo transport.TypeInfo
+	err := msgpack.Unmarshal(data, &typeInfo)
+	if err != nil {
+		// Aus Sicherheitsgründen wird die Verbindung terminiert
+		consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[0]: "+err.Error()))
+
+		// Wird beendet
+		return
+	}
+
+	// LOG
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Enter data: %s", o._innerhid, typeInfo.Type))
+
+	// Dynamische Verarbeitung basierend auf dem Typ des Wertes
+	switch typeInfo.Type {
+	// RPC Pakete
+	case "rpcreq", "rpcres":
+		switch typeInfo.Type {
+		case "rpcreq":
+			// Der Datensatz wird als RPC Regquest eingelesen
+			var rpcRequest *transport.RpcRequest
+			err := msgpack.Unmarshal(data, &rpcRequest)
+			if err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[1]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+
+			// LOG
+			_DebugPrint(fmt.Sprintf("BngConn(%s): Enter RPC-Request: %s", o._innerhid, rpcRequest.Id))
+
+			// Das Paket wird weiterverarbeitet
+			if err := processRpcRequest(o, rpcRequest); err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[2]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+		case "rpcres":
+			// Der Datensatz wird als RPC Regquest eingelesen
+			var rpcResponse *transport.RpcResponse
+			err := msgpack.Unmarshal(data, &rpcResponse)
+			if err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[3]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+
+			// LOG
+			_DebugPrint(fmt.Sprintf("BngConn(%s): Enter RPC-Response: %s", o._innerhid, rpcResponse.Id))
+
+			// Das Paket wird weiterverarbeitet
+			if err := processRpcResponse(o, rpcResponse); err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[4]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+		}
+	// Channel Pakete
+	case "chreq", "chreqresp", "chst", "chsig", "chtsr":
+		switch typeInfo.Type {
+		case "chreq":
+			// Der Datensatz wird ChannelRequest eingelesen
+			var channlrequest *transport.ChannelRequest
+			err := msgpack.Unmarshal(data, &channlrequest)
+			if err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[3]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+
+			// Das Paket wird weiterverarbeitet
+			if err := o._ProcessIncommingChannelRequestPackage(channlrequest); err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[4]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+		case "chreqresp":
+			// Der Datensatz wird als ChannelRequestResponse eingelesen
+			var channlrequest *transport.ChannelRequestResponse
+			err := msgpack.Unmarshal(data, &channlrequest)
+			if err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[5]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+
+			// Das Paket wird weiterverarbeitet
+			if err := o._ProcessIncommingChannelRequestResponsePackage(channlrequest); err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[6]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+		case "chst":
+			// Der Datensatz wird als ChannelSessionDataTransport eingelesen
+			var channlrequest *transport.ChannelSessionDataTransport
+			err := msgpack.Unmarshal(data, &channlrequest)
+			if err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[7]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+
+			// Das Paket wird weiterverarbeitet
+			if err := o._ProcessIncommingChannelSessionPackage(channlrequest); err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[8]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+		case "chsig":
+			// Der Datensatz wird als ChannelSessionTransportSignal eingelesen
+			var channlrequest *transport.ChannlSessionTransportSignal
+			err := msgpack.Unmarshal(data, &channlrequest)
+			if err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[9]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+
+			// Das Paket wird weiterverarbeitet
+			if err := o._ProcessIncommingChannelSessionSignal(channlrequest); err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[10]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+		case "chtsr":
+			// Der Datensatz wird als ChannelTransportStateResponse eingelesen
+			var channlrequest *transport.ChannelTransportStateResponse
+			err := msgpack.Unmarshal(data, &channlrequest)
+			if err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[11]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+
+			// Das Paket wird weiterverarbeitet
+			if err := o._ProcessIncommingChannelTransportStateResponsePackage(channlrequest); err != nil {
+				// Aus Sicherheitsgründen wird die Verbindung terminiert
+				consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[12]: "+err.Error()))
+
+				// Wird beendet
+				return
+			}
+		}
+	// Unbekannter Pakettyp
+	default:
+		// Aus Sicherheitsgründen wird die Verbindung terminiert
+		consensusProtocolTermination(o, fmt.Errorf("bngsocket->_ProcessReadedData[13]: unkown type"))
+
+		// Wird beendet
+		return
+	}
+}
 
 // handleMessage liest und verarbeitet eine MSG-Nachricht aus dem Reader der BngConn.
 // Die empfangenen Daten werden in den bereitgestellten Cache geschrieben. Die Funktion
@@ -72,7 +257,7 @@ func handleEndTransfer(o *BngConn, cache *bytes.Buffer) error {
 	o.backgroundProcesses.Add(1) // Informiere Wartungsgruppe
 	go func(data []byte) {
 		defer o.backgroundProcesses.Done() // Abschluss melden
-		o._ProcessReadedData(data)         // Interne Verarbeitung
+		processReadedData(o, data)         // Interne Verarbeitung
 	}(data)
 
 	// Cache leeren

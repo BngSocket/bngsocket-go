@@ -10,11 +10,12 @@ type RpcDataCapsle struct {
 }
 
 type RpcRequest struct {
-	Type   string           `msgpack:"type"`
-	Params []*RpcDataCapsle `msgpack:"parameters"`
-	Name   string           `msgpack:"name"`
-	Hidden bool             `msgpack:"hidden"`
-	Id     string           `msgpack:"id"`
+	Type         string           `msgpack:"type"`
+	Params       []*RpcDataCapsle `msgpack:"parameters"`
+	ReturnDTypes []string         `msgpack:"returndtypes"`
+	Name         string           `msgpack:"name"`
+	Hidden       bool             `msgpack:"hidden"`
+	Id           string           `msgpack:"id"`
 }
 
 // RpcResponse wird verwendet um die Antwortdaten zu übertragen

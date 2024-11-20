@@ -29,18 +29,16 @@ func processRpcRequest(o *BngConn, rpcReq *transport.RpcRequest) error {
 	}
 
 	// LOG
-	_DebugPrint(fmt.Sprintf("BngConn(%s): Enter incomming rpc function call", o._innerhid))
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Enter incomming rpc function call %s", o._innerhid, rpcReq.Id))
 
 	// Context erstellen und an die Funktion übergeben
 	ctx := &BngRequest{Conn: o}
 
 	// Es wird versucht die Akommenden Funktionsargumente in den Richtigen Datentypen zu unterteilen
-	in, err := convertRPCCallParameterBackToGoValues(o, fn, ctx, rpcReq.Params...)
+	in, err := convertRPCCallParameterBackToGoValues(fn, ctx, rpcReq.Params...)
 	if err != nil {
 		return fmt.Errorf("processRpcRequest[1]: " + err.Error())
 	}
-
-	fmt.Println(in)
 
 	// Methode PANIC Sicher ausführen ausführen
 	results, err := func() (results []reflect.Value, err error) {
@@ -86,13 +84,28 @@ func processRpcRequest(o *BngConn, rpcReq *transport.RpcRequest) error {
 		values = append(values, results[i].Interface())
 	}
 
-	// Es wird geprüft ob die Rückgabewerte zulässig und korrekt sind
-
 	// Die Daten werden für den Transport vorbereitet
-	preparedValues, err := processRpcGoDataTypeTransportable(o, values...)
+	preparedValues, err := processRpcGoDataTypeTransportable(values...)
 	if err != nil {
 		return fmt.Errorf("processRpcRequest: " + err.Error())
 	}
+
+	// Es müssen genausoviele Rückgabewerte wie angefordert vorhanden sein
+	if len(preparedValues) != len(rpcReq.ReturnDTypes) {
+		fmt.Println(rpcReq.ReturnDTypes, preparedValues)
+		return fmt.Errorf("processRpcRequest: invalid function signature")
+	}
+
+	/* Es wird geprüft ob die R+ckgabedaten mit den Erwarteten Datentypen übereinstimmt
+	for s, item := range preparedValues {
+		if item.Type != rpcReq.ReturnDTypes[s] {
+			return fmt.Errorf("processRpcRequest: returntype not correct, invalid function signautre")
+		}
+	}
+	*/
+
+	// LOG
+	_DebugPrint(fmt.Sprintf("BngConn(%s): Return data for rpc call %s", o._innerhid, rpcReq.Id))
 
 	// Die Antwort wird zurückgesendet
 	if err := socketWriteRpcSuccessResponse(o, preparedValues, rpcReq.Id); err != nil {
@@ -182,23 +195,30 @@ func _CallFunction(s *BngConn, hiddencall bool, nameorid string, params []interf
 	}
 
 	// Es wird geprüft ob die Verwendeten Parameter Zulässigen Datentypen sind
-	if err := validateRpcParamsDatatypes(false, params...); err != nil {
+	if err := validateRpcParamsDatatypes(params...); err != nil {
 		return nil, err
 	}
 
 	// Die Parameter werden umgewandelt
-	convertedParams, err := processRpcGoDataTypeTransportable(s, params...)
+	convertedParams, err := processRpcGoDataTypeTransportable(params...)
 	if err != nil {
 		return nil, fmt.Errorf("bngsocket->_CallFunction[0]: " + err.Error())
 	}
 
+	// Die Rückgabetypen werden umgewandelt
+	returnDataTypes, err := processRpcGoDataTypeTransportableDatatype(returnDataType)
+	if err != nil {
+		return nil, fmt.Errorf("bngsocket->_CallFunction[0a]: " + err.Error())
+	}
+
 	// Es wird ein RpcRequest Paket erstellt
 	rpcreq := &transport.RpcRequest{
-		Type:   "rpcreq",
-		Params: convertedParams,
-		Name:   nameorid,
-		Hidden: hiddencall,
-		Id:     strings.ReplaceAll(uuid.NewString(), "-", ""),
+		Type:         "rpcreq",
+		Params:       convertedParams,
+		ReturnDTypes: returnDataTypes,
+		Name:         nameorid,
+		Hidden:       hiddencall,
+		Id:           strings.ReplaceAll(uuid.NewString(), "-", ""),
 	}
 
 	// Das Paket wird in Bytes umgewandelt
@@ -258,17 +278,10 @@ func _CallFunction(s *BngConn, hiddencall bool, nameorid string, params []interf
 			return nil, fmt.Errorf("bngsocket->_CallFunction[2]: wanted return, none, has return")
 		}
 
-		// Es müssen Soviele Rückgaben vorhanden sein, wie gefordert wurde
-		if len(response.Return) != len(returnDataType) {
-			for _, item := range response.Return {
-				fmt.Println(item)
-			}
-			return nil, fmt.Errorf("bngsocket->_CallFunction[2]: invalid function return signature, has %d, need %d", len(response.Return), len(returnDataType))
-		}
-
 		// Es werden alle Einträge abgearbeitet
 		returnValues := make([]interface{}, 0)
 		for i := range response.Return {
+			fmt.Println(response.Return[i])
 			value, err := processRPCCallResponseDataToGoDatatype(response.Return[i], returnDataType[i])
 			if err != nil {
 				return nil, fmt.Errorf("bngsocket->_CallFunction[3]: " + err.Error())

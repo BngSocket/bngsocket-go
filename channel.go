@@ -199,7 +199,7 @@ func (m *BngConnChannel) Write(b []byte) (n int, err error) {
 
 		// Es handelt sich um ein Protokollfehler, die Hauptverbindung muss aus sicherheitsgründen geschlossen werden.
 		// Mit dem Schließen der Hauptverbindung ist der Channel nicht mehr verwendetbar.
-		m.socket._ConsensusProtocolTermination(ferr)
+		consensusProtocolTermination(m.socket, ferr)
 
 		// Der Channel wird ohne Signal geschlossen
 		m.processClose(false)
@@ -385,7 +385,6 @@ func (m *BngConnChannel) enterSignal(signalId uint64) error {
 		}
 	// Es handelt sich um ein nicht nachvollziebares Signal
 	default:
-		fmt.Println("UNKOWN SIG")
 		return fmt.Errorf("BngConnChannel->enterSignal: unkown signal")
 	}
 
