@@ -5,8 +5,16 @@ import (
 	"fmt"
 )
 
-// writeBytesIntoSocketConn schreibt ein Byte-Array in den Schreibkanal des angegebenen Sockets.
-// Es gibt einen Fehler zurück, wenn der Socket oder der Schreibkanal nicht verfügbar ist.
+// writeBytesIntoSocketConn sendet die gegebenen Daten in 1024-Byte-Chunks über die Socket-Verbindung des BngConn-Objekts.
+// Die Funktion teilt die Daten in kleinere Teile auf, sendet jeden Chunk mit dem Typ 'M' (Message) und wartet auf eine ACK-Bestätigung.
+// Nach dem Senden aller Chunks wird ein EndTransfer ('E') gesendet und erneut auf eine ACK-Bestätigung gewartet.
+//
+// Parameter:
+//   - o *BngConn: Ein Zeiger auf das BngConn-Objekt, das die Socket-Verbindung verwaltet.
+//   - data []byte: Die zu sendenden Daten.
+//
+// Rückgabe:
+//   - error: Ein Fehler, falls beim Senden der Daten ein Problem aufgetreten ist, ansonsten nil.
 func writeBytesIntoSocketConn(o *BngConn, data []byte) error {
 	const chunkSize = 1024 // Maximale Größe eines Chunks in Bytes
 

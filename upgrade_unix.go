@@ -24,7 +24,7 @@ func UpgradeSocketToBngConn(socket net.Conn) (*BngConn, error) {
 	// Es wird geprüft, ob es sich um einen zulässigen Socket handelt
 	// Außerdem wird das Basis BNG Objekt erzeugt
 	var client *BngConn
-	switch cconn := socket.(type) {
+	switch socket.(type) {
 	case *net.UnixConn:
 		client = _NewBaseBngSocketObject(socket)
 	case *net.TCPConn:
@@ -33,17 +33,15 @@ func UpgradeSocketToBngConn(socket net.Conn) (*BngConn, error) {
 		client = _NewBaseBngSocketObject(socket)
 	case *tls.Conn:
 		client = _NewBaseBngSocketObject(socket)
-	case net.Conn:
-		client = _NewBaseBngSocketObject(socket)
 	default:
-		return nil, fmt.Errorf("nicht unterstützter Verbindungstyp: %s", cconn)
+		return nil, ErrUnsupportedSocketType
 	}
 
 	// Die Anzahl der Routinen wird übermittelt
 	client.backgroundProcesses.Add(2)
 
 	// Debug-Ausgabe zur Bestätigung des Upgrades
-	_DebugPrint(fmt.Sprintf("Verbindung auf BngConn aufgerüstet = %s", client._innerhid))
+	_DebugPrint(fmt.Sprintf("Connection upgraded to BngConn = %s", client._innerhid))
 
 	// Es wird eine Routine gestartet, welche für das Senden der ausgehenden Daten ist
 	//go constantWriting(client)
