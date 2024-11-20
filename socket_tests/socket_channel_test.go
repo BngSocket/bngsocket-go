@@ -81,7 +81,7 @@ func serveConn_ServerSide(conn net.Conn, wg *sync.WaitGroup) {
 	}
 
 	// Es wird ein HalloWelt Paket an den Client gesendet
-	_, err = channel.Write([]byte("Hallo Welt"))
+	_, err = channel.Write([]byte("HalloWelt"))
 	if err != nil {
 		fmt.Println(err.Error())
 		return

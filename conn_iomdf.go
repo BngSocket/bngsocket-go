@@ -14,6 +14,7 @@ func (o *BngConn) _ProcessReadedData(data []byte) {
 	err := msgpack.Unmarshal(data, &typeInfo)
 	if err != nil {
 		// Aus Sicherheitsgründen wird die Verbindung terminiert
+		fmt.Println("IRO", err.Error())
 		o._ConsensusProtocolTermination(fmt.Errorf("bngsocket->_ProcessReadedData[0]: " + err.Error()))
 
 		// Wird beendet

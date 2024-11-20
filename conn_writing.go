@@ -6,6 +6,25 @@ import (
 	"hash/crc32"
 )
 
+func writeBytesAndWaitOfACK(o *BngConn, data []byte) error {
+	if len(data) > 4096 {
+		return fmt.Errorf("data to big")
+	}
+
+	totalSend := 0
+	for totalSend < len(data) {
+		n, err := o.conn.Write(data)
+		if err != nil {
+			return err
+		}
+		totalSend += n
+		if err := o.ackHandle.WaitOfACK(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // writeBytesIntoSocketConn schreibt ein Byte-Array in den Schreibkanal des angegebenen Sockets.
 // Es gibt einen Fehler zurück, wenn der Socket oder der Schreibkanal nicht verfügbar ist.
 func writeBytesIntoSocketConn(o *BngConn, nData []byte) error {
@@ -13,7 +32,7 @@ func writeBytesIntoSocketConn(o *BngConn, nData []byte) error {
 	o.writerMutex.Lock()
 	defer o.writerMutex.Unlock()
 
-	const packetSize = 40 // Maximale Größe eines Pakets
+	const frameSize = 40 // Maximale Größe eines Frames
 
 	// Berechne die CRC32-Prüfsumme der gesamten Daten
 	crc := crc32.ChecksumIEEE(nData)
@@ -23,69 +42,51 @@ func writeBytesIntoSocketConn(o *BngConn, nData []byte) error {
 	// Daten mit CRC zusammenfügen
 	data := append(nData, crcBytes...)
 
+	// Das Steuerbyte wird übertragen, dieses Signalisiert dass eine neue Übertragung gestartet werden soll
+	_DebugPrint(fmt.Sprintf("BngConn(%s): write control byte", o._innerhid))
+	if err := writeBytesAndWaitOfACK(o, []byte{0}); err != nil {
+		return err
+	}
+
+	// Die Größe der Daten werden übertragen
+	sizeBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(sizeBytes, uint64(len(data)))
+
+	// Die Gesamtgröße des Datensatzes wird übertragen
+	_DebugPrint(fmt.Sprintf("BngConn(%s): write data size", o._innerhid))
+	if err := writeBytesAndWaitOfACK(o, sizeBytes); err != nil {
+		return err
+	}
+
 	totalBytes := len(data) // Gesamtgröße der zu übertragenden Daten
 	bytesSent := 0          // Anzahl der bereits gesendeten Bytes
-	totalSend := 0
-
-	_DebugPrint(fmt.Sprintf("BngConn(%s): write %d bytes", o._innerhid, len(nData)))
 
 	// Übertragung der Daten in Paketen
 	for bytesSent < totalBytes {
-		remainingBytes := totalBytes - bytesSent
-		chunkSize := packetSize
-		if remainingBytes < packetSize {
-			chunkSize = remainingBytes
+		// Berechne die Größe des aktuellen Chunks
+		chunkSize := frameSize
+		if totalBytes-bytesSent < chunkSize {
+			chunkSize = totalBytes - bytesSent
 		}
-
-		// Paket erstellen
-		packet := []byte{2}
-		packet = append(packet, data[bytesSent:bytesSent+chunkSize]...)
 
 		// Paket schreiben
-		fmt.Println("WRITED_PACKAGE")
-		n, err := o.conn.Write(packet)
+		err := writeBytesAndWaitOfACK(o, (data[bytesSent : bytesSent+chunkSize]))
 		if err != nil {
-			writeProcessErrorHandling(o, err)
-			return fmt.Errorf("error writing data to socket: %w", err)
-		}
-		totalSend += n
-		if n < 1 {
-			return fmt.Errorf("unexpected write error: wrote fewer bytes than expected (%d)", n-1)
-		}
-
-		_DebugPrint(fmt.Sprintf("BngConn(%s): Successfully wrote frame of %d bytes (chunk size: %d, total sent: %d/%d)", o._innerhid, n, chunkSize, bytesSent+chunkSize, totalBytes))
-
-		// Auf ACK warten
-		if err := o.ackHandle.WaitOfACK(); err != nil {
-			writeProcessErrorHandling(o, fmt.Errorf("error waiting for ACK: %w", err))
+			writeProcessErrorHandling(o, fmt.Errorf("error writing data to socket: %w", err))
 			return err
 		}
-
-		// Aktualisieren der gesendeten Bytes
-		bytesSent += n - 1
 	}
-
-	fmt.Println("TOTAL SEND:", totalSend)
 
 	_DebugPrint(fmt.Sprintf("BngConn(%s): write flush byte: byte(3)", o._innerhid))
 
 	// Flush-Byte senden
-	n, err := o.conn.Write([]byte{3})
+	err := writeBytesAndWaitOfACK(o, []byte{'\n'})
 	if err != nil {
 		writeProcessErrorHandling(o, fmt.Errorf("flush byte write error: %w", err))
 		return err
 	}
-	if n != 1 {
-		return fmt.Errorf("flush byte write error: expected 1 byte, wrote %d", n)
-	}
 
-	// Auf abschließendes ACK warten
-	if err := o.ackHandle.WaitOfACK(); err != nil {
-		writeProcessErrorHandling(o, fmt.Errorf("error waiting for final ACK: %w", err))
-		return err
-	}
-
-	_DebugPrint(fmt.Sprintf("BngConn(%s): total bytes written: %d", o._innerhid, len(nData)))
-
+	// LOG
+	_DebugPrint(fmt.Sprintf("BngConn(%s): total bytes written: %d", o._innerhid, bytesSent))
 	return nil
 }

@@ -30,7 +30,7 @@ func constantReading(o *BngConn) {
 	_DebugPrint(fmt.Sprintf("BngConn(%s): Constant reading from Socket was started", o._innerhid))
 
 	for runningBackgroundServingLoop(o) {
-		// Die Daten aus dem Paket werden eingelesen
+		// Daten aus dem Paket einlesen
 		buffer := make([]byte, 41)
 		sizeN, rerr := o.conn.Read(buffer)
 		if rerr != nil {
@@ -44,10 +44,11 @@ func constantReading(o *BngConn) {
 			readProcessErrorHandling(o, fmt.Errorf("invalid data stream"))
 			return
 		}
-		totalRecived += len(buffer[:sizeN])
+
+		totalRecived += sizeN
 
 		switch {
-		case buffer[0] == byte(3): // Datenabschluss-Paket
+		case buffer[0] == byte(3): // Flush-Paket
 			_DebugPrint(fmt.Sprintf("BngConn(%s): Flush received", o._innerhid))
 			if len(cache) < 5 {
 				_DebugPrint(fmt.Sprintf("BngConn(%s): Cache too small for CRC processing", o._innerhid))
@@ -57,7 +58,6 @@ func constantReading(o *BngConn) {
 
 			dataWithoutCRC := cache[:len(cache)-4]
 			calculatedCRC := crc32.ChecksumIEEE(dataWithoutCRC)
-
 			crcBytes := make([]byte, 4)
 			binary.BigEndian.PutUint32(crcBytes, calculatedCRC)
 
@@ -67,6 +67,7 @@ func constantReading(o *BngConn) {
 			}
 
 			_DebugPrint(fmt.Sprintf("BngConn(%s): Total bytes read: %d", o._innerhid, len(dataWithoutCRC)))
+			fmt.Println("READED BYTES:", dataWithoutCRC)
 			err := processCompleteData(o, dataWithoutCRC)
 			if err != nil {
 				_DebugPrint(fmt.Sprintf("BngConn(%s): Error processing final data: %v", o._innerhid, err))
@@ -75,9 +76,9 @@ func constantReading(o *BngConn) {
 				return
 			}
 
-			fmt.Println("TOTAL RECIVED", totalRecived)
 			cache = cache[:0]
 			totalRecived = 0
+			_DebugPrint(fmt.Sprintf("BngConn(%s): Sending ACK for flush byte", o._innerhid))
 			err = writePacketACK(o)
 			if err != nil {
 				_DebugPrint(fmt.Sprintf("BngConn(%s): Error sending ACK: %v", o._innerhid, err))
@@ -85,6 +86,12 @@ func constantReading(o *BngConn) {
 				return
 			}
 		case buffer[0] == byte(2): // Datenpaket
+			if sizeN < 2 {
+				// Ein Datenpaket muss mindestens 2 Bytes haben (1 Byte Header + mindestens 1 Byte Daten)
+				_DebugPrint(fmt.Sprintf("BngConn(%s): Frame too small for processing", o._innerhid))
+				writePacketNACK(o)
+				continue
+			}
 			cache = append(cache, buffer[1:sizeN]...)
 			_DebugPrint(fmt.Sprintf("BngConn(%s): %d bytes frame received", o._innerhid, sizeN))
 
