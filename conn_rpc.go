@@ -90,13 +90,12 @@ func processRpcRequest(o *BngConn, rpcReq *transport.RpcRequest) error {
 		return fmt.Errorf("processRpcRequest: invalid function signature")
 	}
 
-	/* Es wird geprüft ob die R+ckgabedaten mit den Erwarteten Datentypen übereinstimmt
+	// Es wird geprüft ob die R+ckgabedaten mit den Erwarteten Datentypen übereinstimmt
 	for s, item := range preparedValues {
 		if item.Type != rpcReq.ReturnDTypes[s] {
 			return fmt.Errorf("processRpcRequest: returntype not correct, invalid function signautre")
 		}
 	}
-	*/
 
 	// LOG
 	_DebugPrint(fmt.Sprintf("BngConn(%s): Return data for rpc call %s", o._innerhid, rpcReq.Id))

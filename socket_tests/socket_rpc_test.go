@@ -25,7 +25,13 @@ func serveChannelConnection_ClientSideRPC(conn *bngsocket.BngConn) {
 		panic(err)
 	}
 
-	_, err = conn.CallFunction("test2", []interface{}{100}, []reflect.Type{})
+	exampleMap := map[string]int{
+		"Apples":  5,
+		"Bananas": 12,
+		"Oranges": 7,
+	}
+
+	_, err = conn.CallFunction("test2", []interface{}{100, []string{"test wert"}, exampleMap}, []reflect.Type{})
 	if err != nil {
 		panic(err)
 	}
@@ -90,8 +96,8 @@ func serveConn_ServerSideRPC(conn net.Conn) {
 		panic(err)
 	}
 
-	err = upgrConn.RegisterFunction("test2", func(req *bngsocket.BngRequest, a int) error {
-		fmt.Println(a)
+	err = upgrConn.RegisterFunction("test2", func(req *bngsocket.BngRequest, a int, strslice []string, exampleMap map[string]int) error {
+		fmt.Println(a, strslice, exampleMap)
 		return nil
 	})
 	if err != nil {

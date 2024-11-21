@@ -378,9 +378,87 @@ func processGoValueToRelectType(value any, expectedType reflect.Type) (reflect.V
 	case reflect.String:
 		return reflect.ValueOf(value), nil
 	case reflect.Slice:
-		return reflect.ValueOf(value), nil
+		// Prüfen, ob value tatsächlich ein Slice ist
+		if val.Kind() != reflect.Slice {
+			return reflect.Value{}, fmt.Errorf("erwartetes Slice, aber erhalten: %T", value)
+		}
+
+		// Erstellen eines neuen Slices mit dem erwarteten Elementtyp
+		resultSlice := reflect.MakeSlice(expectedType, val.Len(), val.Cap())
+
+		for i := 0; i < val.Len(); i++ {
+			elem := val.Index(i)
+
+			// Dynamische Prüfung für interface{}
+			if elem.Kind() == reflect.Interface {
+				// Extrahiere den tatsächlichen Wert
+				elem = elem.Elem()
+			}
+
+			// Konvertierbarkeit prüfen
+			if !elem.Type().ConvertibleTo(expectedType.Elem()) {
+				return reflect.Value{}, fmt.Errorf(
+					"die Elemente des Slices sind nicht konvertierbar: erhalten %s, erwartet %s",
+					elem.Type(), expectedType.Elem(),
+				)
+			}
+
+			// Konvertieren und in das neue Slice setzen
+			resultSlice.Index(i).Set(elem.Convert(expectedType.Elem()))
+		}
+
+		// Zurückgeben des neu erstellten Slices
+		return resultSlice, nil
 	case reflect.Map:
-		return reflect.ValueOf(value), nil
+		// Prüfen, ob `value` tatsächlich eine Map ist
+		if val.Kind() != reflect.Map {
+			return reflect.Value{}, fmt.Errorf("erwartete Map, aber erhalten: %T", value)
+		}
+
+		// Prüfen, ob die Schlüssel und Werte konvertierbar sind
+		if !val.Type().Key().ConvertibleTo(expectedType.Key()) {
+			return reflect.Value{}, fmt.Errorf(
+				"die Schlüssel der Map sind nicht konvertierbar: erhalten %s, erwartet %s",
+				val.Type().Key(), expectedType.Key(),
+			)
+		}
+		if !val.Type().Elem().ConvertibleTo(expectedType.Elem()) && val.Type().Elem().Kind() != reflect.Interface {
+			return reflect.Value{}, fmt.Errorf(
+				"die Werte der Map sind nicht konvertierbar: erhalten %s, erwartet %s",
+				val.Type().Elem(), expectedType.Elem(),
+			)
+		}
+
+		// Erstellen einer neuen Map mit dem erwarteten Typ
+		resultMap := reflect.MakeMap(expectedType)
+
+		// Iterieren über die Schlüssel-Werte-Paare
+		for _, key := range val.MapKeys() {
+			value := val.MapIndex(key)
+
+			// Konvertieren des Schlüssels in den erwarteten Typ
+			newKey := key.Convert(expectedType.Key())
+
+			// Dynamische Konvertierung der Werte
+			var newValue reflect.Value
+			if value.Type().Kind() == reflect.Interface {
+				value = value.Elem() // Extrahiere den tatsächlichen Wert, falls es ein interface{} ist
+			}
+
+			if value.Type().ConvertibleTo(expectedType.Elem()) {
+				newValue = value.Convert(expectedType.Elem())
+			} else {
+				return reflect.Value{}, fmt.Errorf(
+					"das Element der Map ist nicht konvertierbar: erhalten %s, erwartet %s",
+					value.Type(), expectedType.Elem(),
+				)
+			}
+
+			// Hinzufügen zur neuen Map
+			resultMap.SetMapIndex(newKey, newValue)
+		}
+
+		return resultMap, nil
 	case reflect.Ptr:
 		// Erstelle einen neuen Zeiger auf das erwartete Struct
 		structPtr := reflect.New(expectedType)
