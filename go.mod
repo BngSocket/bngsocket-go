@@ -1,4 +1,4 @@
-module github.com/CustodiaJS/bngsocket
+module github.com/custodia-cenv/bngsocket-go
 
 go 1.22.5
 

@@ -6,7 +6,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/CustodiaJS/bngsocket/transport"
+	"github.com/custodia-cenv/bngsocket-go/transport"
 )
 
 // Wird verwendet um eintreffende Channel Request Pakete zu verarbeiten

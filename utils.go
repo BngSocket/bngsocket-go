@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/CustodiaJS/bngsocket/transport"
+	"github.com/custodia-cenv/bngsocket-go/transport"
 	"github.com/fxamacker/cbor/v2"
 )
 

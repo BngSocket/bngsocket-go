@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CustodiaJS/bngsocket"
+	"github.com/custodia-cenv/bngsocket-go"
 )
 
 var (

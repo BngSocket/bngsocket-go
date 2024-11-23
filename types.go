@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/CustodiaJS/bngsocket/transport"
+	"github.com/custodia-cenv/bngsocket-go/transport"
 )
 
 // _DataItem repräsentiert einen einzelnen Datensatz mit einer eindeutigen ID und den zugehörigen Daten.

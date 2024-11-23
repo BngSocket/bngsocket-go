@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/CustodiaJS/bngsocket/transport"
+	"github.com/custodia-cenv/bngsocket-go/transport"
 	"github.com/google/uuid"
 )
 
